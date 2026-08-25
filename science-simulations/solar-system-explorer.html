@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive 3D Solar System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.163.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.163.0/examples/jsm/"
+        }
+      }
+    </script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+            background-color: #000;
+            color: #fff;
+        }
+
+        #webgl-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+        }
+
+        #label-renderer-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            /* IMPORTANT: Allow clicks on labels below */
+            pointer-events: none;
+            /* Container doesn't block canvas... */
+            z-index: 1;
+        }
+
+        /* --- Info Panel Styling (Unchanged) --- */
+        #info-panel {
+            position: absolute;
+            top: 80px;
+            left: 20px;
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            max-width: 300px;
+            display: none;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            z-index: 10;
+            pointer-events: auto;
+            /* Allow interaction with info panel */
+            max-height: calc(100vh - 100px);
+            overflow-y: auto;
+        }
+
+        #info-panel h2 {
+            margin-top: 0;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #eee;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding-bottom: 0.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        #info-panel h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #ddd;
+            margin-top: 1rem;
+            margin-bottom: 0.25rem;
+        }
+
+        #info-panel p {
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+            color: #ccc;
+            line-height: 1.4;
+        }
+
+        #info-panel img {
+            margin-top: 0.5rem;
+            border-radius: 0.375rem;
+            width: 100%;
+            height: auto;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        /* --- Loading Spinner (Unchanged) --- */
+        #loading-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            gap: 1rem;
+            background-color: #000;
+            z-index: 20;
+        }
+
+        .spinner {
+            border: 6px solid rgba(255, 255, 255, 0.3);
+            border-top: 6px solid #fff;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        #webgl-canvas {
+            visibility: hidden;
+        }
+
+        /* --- Planet Label Styling --- */
+        .planet-label {
+            color: #fff;
+            font-family: 'Inter', sans-serif;
+            font-size: 12px;
+            padding: 3px 6px;
+            /* Slightly larger padding */
+            background-color: rgba(0, 0, 0, 0.6);
+            /* Slightly darker */
+            border-radius: 4px;
+            white-space: nowrap;
+            cursor: pointer;
+            /* Add pointer cursor */
+            /* IMPORTANT: Allow labels to receive clicks */
+            pointer-events: auto;
+            /* Override container setting */
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            /* Subtle border */
+            transition: background-color 0.2s ease;
+            /* Hover effect */
+        }
+
+        .planet-label:hover {
+            background-color: rgba(50, 50, 50, 0.8);
+        }
+
+        /* --- Main Heading (Unchanged) --- */
+        #main-heading {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        /* --- Zoom Instruction Text --- */
+        #zoom-instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.8rem;
+            z-index: 5;
+            /* Above canvas, below panel */
+            pointer-events: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="loading-container">
+        <div class="spinner"></div>
+        <p>Loading Solar System...</p>
+    </div>
+
+    <h1 id="main-heading" class="text-2xl font-bold text-white">Solar System Preview</h1>
+
+    <div id="label-renderer-container"></div>
+
+    <canvas id="webgl-canvas"></canvas>
+
+    <div id="info-panel">
+        <h2 id="planet-name">Planet Name</h2>
+        <h3>Description</h3>
+        <p id="planet-desc">Description of the planet goes here.</p>
+        <h3>Fun Fact</h3>
+        <p id="planet-fact">Fun fact about the planet.</p>
+        <h3>View from Space</h3>
+        <img id="planet-img-space" src="https://placehold.co/300x200/000000/FFFFFF?text=Planet+Space+View"
+            alt="Planet from Space"
+            onerror="this.src='https://placehold.co/300x200/333333/FFFFFF?text=Image+Not+Found'; this.alt='Image not found'">
+        <h3>Surface View (Conceptual)</h3>
+        <img id="planet-img-surface" src="https://placehold.co/300x200/111111/FFFFFF?text=Planet+Surface+View"
+            alt="Planet Surface"
+            onerror="this.src='https://placehold.co/300x200/333333/FFFFFF?text=Image+Not+Found'; this.alt='Image not found'">
+    </div>
+
+    <div id="zoom-instructions">Scroll to Zoom</div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+        // --- Basic Setup ---
+        let scene, camera, renderer, labelRenderer, controls;
+        let raycaster, mouse; // Raycaster still needed for background click detection
+        const planets = []; // Store planet meshes (needed for target focusing)
+        const orbits = []; // Store orbit pivot objects
+        const orbitLines = {}; // Store orbit line meshes { 'earth': lineMesh, ... }
+        const planetMeshes = {}; // Store planet meshes by key { 'earth': mesh, ... }
+
+        // Info panel elements
+        const infoPanel = document.getElementById('info-panel');
+        const planetNameEl = document.getElementById('planet-name');
+        const planetDescEl = document.getElementById('planet-desc');
+        const planetFactEl = document.getElementById('planet-fact');
+        const planetImgSpaceEl = document.getElementById('planet-img-space');
+        const planetImgSurfaceEl = document.getElementById('planet-img-surface');
+
+        const loadingContainer = document.getElementById('loading-container');
+        const canvas = document.getElementById('webgl-canvas');
+        const labelContainer = document.getElementById('label-renderer-container');
+
+        // --- Constants ---
+        const scaleFactor = 5.0;
+        const orbitalSpeedFactor = 0.2;
+        const axialRotationSpeed = 0.0005;
+        const ORBIT_COLOR_DEFAULT = 0x666666; // Dim gray for default orbit
+        const ORBIT_COLOR_HIGHLIGHT = 0xffffff; // White for highlighted orbit
+
+        // --- Planet Data (Unchanged from previous version) ---
+        const placeholderDesc = "Detailed description currently unavailable. This celestial body plays a significant role in the dynamics and history of our solar system.";
+        const placeholderImgSpace = `https://placehold.co/300x200/000000/FFFFFF?text=`;
+        const placeholderImgSurface = `https://placehold.co/300x200/222222/FFFFFF?text=`;
+        const fallbackImg = 'https://placehold.co/300x200/333333/FFFFFF?text=Image+Not+Found';
+        const planetData = {
+            sun: { name: "Sun", color: 0xffd700, size: 15 * scaleFactor, fact: "...", description: "...", imageSpaceUrl: `${placeholderImgSpace}Sun`, imageSurfaceUrl: `${placeholderImgSurface}Sun+Surface+(Conceptual)` },
+            mercury: { name: "Mercury", color: 0xaaaaaa, size: 0.8 * scaleFactor, distance: 35 * scaleFactor, speed: 0.02 * orbitalSpeedFactor, fact: "...", description: "...", imageSpaceUrl: `${placeholderImgSpace}Mercury`, imageSurfaceUrl: `${placeholderImgSurface}Mercury+Surface` },
+            venus: { name: "Venus", color: 0xffe4b5, size: 1.4 * scaleFactor, distance: 55 * scaleFactor, speed: 0.015 * orbitalSpeedFactor, fact: "...", description: "...", imageSpaceUrl: `${placeholderImgSpace}Venus`, imageSurfaceUrl: `${placeholderImgSurface}Venus+Surface` },
+            earth: { name: "Earth", color: 0x4682b4, size: 1.5 * scaleFactor, distance: 80 * scaleFactor, speed: 0.01 * orbitalSpeedFactor, fact: "...", description: "...", imageSpaceUrl: `${placeholderImgSpace}Earth`, imageSurfaceUrl: `${placeholderImgSurface}Earth+Surface` },
+            mars: { name: "Mars", color: 0xff4500, size: 1.0 * scaleFactor, distance: 110 * scaleFactor, speed: 0.008 * orbitalSpeedFactor, fact: "...", description: "...", imageSpaceUrl: `${placeholderImgSpace}Mars`, imageSurfaceUrl: `${placeholderImgSurface}Mars+Surface` },
+            jupiter: { name: "Jupiter", color: 0xffa500, size: 6.0 * scaleFactor, distance: 180 * scaleFactor, speed: 0.004 * orbitalSpeedFactor, fact: "...", description: "...", imageSpaceUrl: `${placeholderImgSpace}Jupiter`, imageSurfaceUrl: `${placeholderImgSurface}Jupiter+Atmosphere` },
+            saturn: { name: "Saturn", color: 0xf0e68c, size: 5.0 * scaleFactor, distance: 260 * scaleFactor, speed: 0.003 * orbitalSpeedFactor, fact: "...", description: "...", imageSpaceUrl: `${placeholderImgSpace}Saturn`, imageSurfaceUrl: `${placeholderImgSurface}Saturn+Atmosphere` },
+            uranus: { name: "Uranus", color: 0xadd8e6, size: 3.5 * scaleFactor, distance: 350 * scaleFactor, speed: 0.002 * orbitalSpeedFactor, fact: "...", description: "...", imageSpaceUrl: `${placeholderImgSpace}Uranus`, imageSurfaceUrl: `${placeholderImgSurface}Uranus+Atmosphere` },
+            neptune: { name: "Neptune", color: 0x4169e1, size: 3.3 * scaleFactor, distance: 450 * scaleFactor, speed: 0.001 * orbitalSpeedFactor, fact: "...", description: "...", imageSpaceUrl: `${placeholderImgSpace}Neptune`, imageSurfaceUrl: `${placeholderImgSurface}Neptune+Atmosphere` }
+        };
+        // Fill in missing facts/descriptions for brevity in thought block
+        Object.keys(planetData).forEach(key => {
+            if (!planetData[key].fact || planetData[key].fact === "...") planetData[key].fact = `${planetData[key].name} fun fact placeholder.`;
+            if (!planetData[key].description || planetData[key].description === "...") planetData[key].description = `${planetData[key].name} description placeholder. ${placeholderDesc}`;
+        });
+
+
+        function init() {
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x000000);
+
+            // Camera
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 20000);
+            camera.position.set(0, 80 * scaleFactor, 250 * scaleFactor);
+
+            // WebGL Renderer
+            renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+
+            // CSS2D Label Renderer
+            labelRenderer = new CSS2DRenderer({ element: labelContainer });
+            labelRenderer.setSize(window.innerWidth, window.innerHeight);
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
+            scene.add(ambientLight);
+            const pointLight = new THREE.PointLight(0xffffff, 6, 3000 * scaleFactor);
+            pointLight.position.set(0, 0, 0);
+            scene.add(pointLight);
+
+            // Controls
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.screenSpacePanning = false;
+            controls.minDistance = 5 * scaleFactor;
+            controls.maxDistance = 1500 * scaleFactor;
+            // Target will be animated, start at center
+            controls.target.set(0, 0, 0);
+
+            // Raycaster (for background clicks)
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+
+            // Create Scene Elements
+            createSolarSystem(); // Creates planets, labels, orbits
+            createStars();
+
+            // Event Listeners
+            window.addEventListener('resize', onWindowResize, false);
+            // Canvas click listener now ONLY hides the panel
+            canvas.addEventListener('click', onCanvasClick, false);
+
+            // Loading Complete
+            loadingContainer.style.display = 'none';
+            canvas.style.visibility = 'visible';
+            animate();
+        }
+
+        function createSolarSystem() {
+            // Create Sun & Planets
+            Object.keys(planetData).forEach(key => {
+                const data = planetData[key];
+
+                const geometry = new THREE.SphereGeometry(data.size, 32, 32);
+                let material;
+                if (key === 'sun') {
+                    material = new THREE.MeshBasicMaterial({ color: data.color });
+                } else {
+                    material = new THREE.MeshStandardMaterial({
+                        color: data.color, roughness: 0.7, metalness: 0.1
+                    });
+                }
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.userData = { // Store data needed for info panel and focusing
+                    isPlanet: true, name: data.name, fact: data.fact,
+                    description: data.description, imageSpaceUrl: data.imageSpaceUrl,
+                    imageSurfaceUrl: data.imageSurfaceUrl, planetKey: key // Store key for easy lookup
+                };
+                planetMeshes[key] = mesh; // Store mesh reference by key
+
+                if (key === 'sun') {
+                    scene.add(mesh);
+                } else {
+                    const orbit = new THREE.Object3D();
+                    scene.add(orbit);
+                    orbits.push({ pivot: orbit, speed: data.speed });
+                    mesh.position.x = data.distance;
+                    orbit.add(mesh);
+
+                    // --- Create and store orbit path ---
+                    const orbitLine = createOrbitPath(data.distance);
+                    scene.add(orbitLine);
+                    orbitLines[key] = orbitLine; // Store line reference by key
+
+                    if (key === 'saturn') {
+                        addSaturnRings(mesh, data.size);
+                    }
+                }
+
+                planets.push(mesh); // Keep original planets array if needed elsewhere
+                addPlanetLabel(mesh, data.name, data.size, key); // Pass key to label function
+            });
+        }
+
+        // --- Function to create orbit lines ---
+        function createOrbitPath(distance) {
+            const curve = new THREE.EllipseCurve(
+                0, 0,             // ax, aY
+                distance, distance, // xRadius, yRadius
+                0, 2 * Math.PI,   // aStartAngle, aEndAngle
+                false,            // aClockwise
+                0                 // aRotation
+            );
+            const points = curve.getPoints(150); // Increase points for smoother ellipse
+            const geometry = new THREE.BufferGeometry().setFromPoints(points);
+            const material = new THREE.LineBasicMaterial({
+                color: ORBIT_COLOR_DEFAULT, // Default dim color
+                transparent: true,
+                opacity: 0.5 // Make orbits semi-transparent
+            });
+            const ellipse = new THREE.Line(geometry, material);
+            ellipse.rotation.x = Math.PI / 2; // Rotate to lay flat on XZ plane
+            return ellipse;
+        }
+
+        // Helper for Saturn's rings (Unchanged)
+        function addSaturnRings(planetMesh, planetSize) { /* ... code unchanged ... */
+            const ringInnerRadius = planetSize * 1.3; const ringOuterRadius = planetSize * 2.2; const ringGeometry = new THREE.RingGeometry(ringInnerRadius, ringOuterRadius, 64); const pos = ringGeometry.attributes.position; const v3 = new THREE.Vector3(); for (let i = 0; i < pos.count; i++) { v3.fromBufferAttribute(pos, i); pos.setXYZ(i, v3.x, 0, v3.y); } ringGeometry.computeVertexNormals(); ringGeometry.attributes.position.needsUpdate = true; const ringMaterial = new THREE.MeshStandardMaterial({ color: 0xaaaaa6, side: THREE.DoubleSide, transparent: true, opacity: 0.6, roughness: 0.8, metalness: 0.1 }); const ringMesh = new THREE.Mesh(ringGeometry, ringMaterial); ringMesh.rotation.x = Math.PI / 2; planetMesh.add(ringMesh);
+        }
+
+        // --- Updated Label Function ---
+        function addPlanetLabel(object, name, size, planetKey) { // Accept planetKey
+            const labelDiv = document.createElement('div');
+            labelDiv.className = 'planet-label';
+            labelDiv.textContent = name;
+            labelDiv.dataset.planetKey = planetKey; // Store key in dataset
+
+            // --- Add Click Listener to Label ---
+            labelDiv.addEventListener('click', (event) => {
+                event.stopPropagation(); // Prevent click from reaching canvas listener
+                const key = event.target.dataset.planetKey;
+                const data = planetData[key];
+                const mesh = planetMeshes[key]; // Get the corresponding mesh
+
+                if (data && mesh) {
+                    displayPlanetInfo(data); // Show info in panel
+                    highlightOrbit(key); // Highlight the orbit line
+                    focusCameraOnPlanet(mesh); // Focus camera
+                }
+            });
+
+            const label = new CSS2DObject(labelDiv);
+            label.position.set(0, size * 1.2, 0);
+            object.add(label);
+        }
+
+        // --- Function to display info in the panel ---
+        function displayPlanetInfo(data) {
+            planetNameEl.textContent = data.name;
+            planetDescEl.textContent = data.description;
+            planetFactEl.textContent = data.fact;
+            planetImgSpaceEl.src = data.imageSpaceUrl || fallbackImg;
+            planetImgSpaceEl.alt = `${data.name} from space`;
+            planetImgSurfaceEl.src = data.imageSurfaceUrl || fallbackImg;
+            planetImgSurfaceEl.alt = `${data.name} surface view`;
+            infoPanel.style.display = 'block';
+            infoPanel.scrollTop = 0;
+        }
+
+        // --- Function to highlight the selected orbit ---
+        function highlightOrbit(selectedKey) {
+            Object.keys(orbitLines).forEach(key => {
+                const line = orbitLines[key];
+                if (line) {
+                    // Set color based on whether it's the selected one
+                    line.material.color.setHex(key === selectedKey ? ORBIT_COLOR_HIGHLIGHT : ORBIT_COLOR_DEFAULT);
+                    line.material.opacity = key === selectedKey ? 0.9 : 0.5; // Make highlighted more opaque
+                }
+            });
+        }
+
+        // --- Function to smoothly focus camera ---
+        // Store target position for lerping
+        let targetPosition = new THREE.Vector3();
+        let isFocusing = false;
+
+        function focusCameraOnPlanet(planetMesh) {
+            planetMesh.getWorldPosition(targetPosition); // Get world position of the planet
+            isFocusing = true; // Flag to start lerping in animate loop
+            // controls.target.copy(targetPosition); // Instant focus (alternative)
+        }
+
+
+        function createStars() { /* ... code unchanged ... */
+            const starQty = 15000; const starVertices = []; const starRadius = 2000 * scaleFactor; for (let i = 0; i < starQty; i++) { const x = THREE.MathUtils.randFloatSpread(starRadius * 2); const y = THREE.MathUtils.randFloatSpread(starRadius * 2); const z = THREE.MathUtils.randFloatSpread(starRadius * 2); const distanceSq = x * x + y * y + z * z; if (distanceSq > (planetData.neptune.distance * planetData.neptune.distance * 0.1) && distanceSq < (starRadius * starRadius)) { starVertices.push(x, y, z); } else { i--; } } const starsGeometry = new THREE.BufferGeometry(); starsGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starVertices, 3)); const starsMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 1.5, sizeAttenuation: true }); const starField = new THREE.Points(starsGeometry, starsMaterial); starField.renderOrder = -1; scene.add(starField);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            labelRenderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // --- Click Handler ONLY for Background/Canvas ---
+        function onCanvasClick(event) {
+            // Check if click was on empty space (no planet label was clicked)
+            // We can approximate this by checking if the info panel is already visible
+            // and the click wasn't on the panel itself.
+            // A more robust way would involve raycasting against an invisible background plane,
+            // but let's keep it simple: clicking canvas hides the panel.
+
+            // Calculate mouse position (needed if we were raycasting)
+            // const rect = canvas.getBoundingClientRect();
+            // mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            // mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+            // If the info panel is visible, hide it.
+            if (infoPanel.style.display === 'block') {
+                // Check if the click target is inside the info panel
+                if (!infoPanel.contains(event.target)) {
+                    infoPanel.style.display = 'none';
+                    highlightOrbit(null); // Remove highlight when clicking away
+                    isFocusing = false; // Stop focusing animation if any
+                }
+            }
+        }
+
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Animate Orbits
+            orbits.forEach(orbitData => {
+                orbitData.pivot.rotation.y += orbitData.speed;
+            });
+
+            // Animate Planet Axial Rotation
+            planets.forEach(planet => {
+                if (planet.userData.name !== 'Sun') {
+                    planet.rotation.y += axialRotationSpeed;
+                }
+            });
+
+            // --- Smooth Camera Targeting ---
+            if (isFocusing) {
+                controls.target.lerp(targetPosition, 0.05); // Adjust lerp factor for speed (0.05 is smooth)
+                // Optional: Stop focusing once close enough
+                if (controls.target.distanceToSquared(targetPosition) < 0.1) {
+                    controls.target.copy(targetPosition); // Snap to final target
+                    isFocusing = false;
+                }
+            }
+
+            controls.update(); // MUST be called after changing target or position
+            renderer.render(scene, camera);
+            labelRenderer.render(scene, camera);
+        }
+
+        window.onload = init;
+
+    </script>
+</body>
+
+</html>

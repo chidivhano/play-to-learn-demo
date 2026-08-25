@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Time Adventure Game</title>
+
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- React and ReactDOM via CDN -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+
+    <!-- Babel standalone for in-browser JSX compilation -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        @keyframes pop {
+            0% {
+                transform: scale(0.8);
+                opacity: 0;
+            }
+
+            50% {
+                transform: scale(1.1);
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .animate-pop {
+            animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .animate-bounce-short {
+            animation: bounce-short 2s infinite;
+        }
+
+        @keyframes bounce-short {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-5px);
+            }
+        }
+
+        @keyframes fade-in {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-fade-in {
+            animation: fade-in 0.5s ease-out;
+        }
+
+        @keyframes confetti {
+            0% {
+                transform: translateY(0) rotate(0deg);
+                opacity: 1;
+            }
+
+            100% {
+                transform: translateY(100vh) rotate(720deg);
+                opacity: 0;
+            }
+        }
+
+        .animate-confetti {
+            animation: confetti forwards linear;
+        }
+
+        /* Ensure the app is unselectable and touch actions don't trigger pull-to-refresh */
+        body {
+            overscroll-behavior-y: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+
+    <!-- Main Application Script -->
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useCallback } = React;
+
+        const IconProps = { stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round", fill: "none" };
+
+        const Star = ({ size = 24, className = "", fill = "none" }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" className={className} {...IconProps} fill={fill}>
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+            </svg>
+        );
+        const ArrowRight = ({ size = 24, className = "" }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" className={className} {...IconProps}>
+                <line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline>
+            </svg>
+        );
+        const RefreshCcw = ({ size = 24, className = "" }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" className={className} {...IconProps}>
+                <polyline points="1 4 1 10 7 10"></polyline><polyline points="23 20 23 14 17 14"></polyline>
+                <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10M23 14l-4.64 4.36A9 9 0 0 1 3.51 15"></path>
+            </svg>
+        );
+        const Volume2 = ({ size = 24, className = "" }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" className={className} {...IconProps}>
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+            </svg>
+        );
+        const VolumeX = ({ size = 24, className = "" }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" className={className} {...IconProps}>
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line>
+            </svg>
+        );
+        const Trophy = ({ size = 24, className = "" }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" className={className} {...IconProps}>
+                <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path>
+                <path d="M4 22h16"></path><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"></path>
+                <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"></path><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"></path>
+            </svg>
+        );
+        const Play = ({ size = 24, className = "", fill = "currentColor" }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" className={className} {...IconProps} fill={fill}>
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>
+        );
+        const DeleteIcon = ({ size = 24, className = "" }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" className={className} {...IconProps}>
+                <path d="M20 5H9l-7 7 7 7h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2Z"></path><line x1="18" y1="9" x2="12" y2="15"></line><line x1="12" y1="9" x2="18" y2="15"></line>
+            </svg>
+        );
+        const Check = ({ size = 24, className = "" }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" className={className} {...IconProps}>
+                <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+        );
+        const GridIcon = ({ size = 24, className = "" }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" className={className} {...IconProps}>
+                <rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect>
+                <rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect>
+            </svg>
+        );
+        const HomeIcon = ({ size = 24, className = "" }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" className={className} {...IconProps}>
+                <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+        );
+
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        const playSound = (type) => {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            const now = audioCtx.currentTime;
+
+            if (type === 'correct') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(523.25, now);
+                osc.frequency.setValueAtTime(659.25, now + 0.1);
+                osc.frequency.setValueAtTime(783.99, now + 0.2);
+                gainNode.gain.setValueAtTime(0.3, now);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+                osc.start(now);
+                osc.stop(now + 0.6);
+            } else if (type === 'wrong') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(150, now);
+                osc.frequency.linearRampToValueAtTime(100, now + 0.3);
+                gainNode.gain.setValueAtTime(0.3, now);
+                gainNode.gain.linearRampToValueAtTime(0.01, now + 0.3);
+                osc.start(now);
+                osc.stop(now + 0.3);
+            } else if (type === 'pop') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(800, now);
+                gainNode.gain.setValueAtTime(0.1, now);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                osc.start(now);
+                osc.stop(now + 0.1);
+            } else if (type === 'win') {
+                osc.type = 'square';
+                gainNode.gain.value = 0.1;
+                const notes = [523.25, 659.25, 783.99, 1046.50];
+                notes.forEach((freq, i) => {
+                    const o = audioCtx.createOscillator();
+                    const g = audioCtx.createGain();
+                    o.connect(g);
+                    g.connect(audioCtx.destination);
+                    o.type = 'triangle';
+                    o.frequency.value = freq;
+                    g.gain.setValueAtTime(0.1, now + i * 0.1);
+                    g.gain.exponentialRampToValueAtTime(0.01, now + i * 0.1 + 0.4);
+                    o.start(now + i * 0.1);
+                    o.stop(now + i * 0.1 + 0.4);
+                });
+            }
+        };
+
+        const Confetti = () => {
+            return (
+                <div className="absolute inset-0 pointer-events-none overflow-hidden z-50">
+                    {[...Array(20)].map((_, i) => (
+                        <div
+                            key={i}
+                            className="absolute animate-confetti"
+                            style={{
+                                left: `${Math.random() * 100}%`,
+                                top: `-20px`,
+                                backgroundColor: ['#EF4444', '#3B82F6', '#F59E0B', '#10B981', '#8B5CF6'][Math.floor(Math.random() * 5)],
+                                width: '10px',
+                                height: '10px',
+                                animationDuration: `${1 + Math.random() * 2}s`,
+                                animationDelay: `${Math.random() * 0.5}s`,
+                                transform: `rotate(${Math.random() * 360}deg)`
+                            }}
+                        />
+                    ))}
+                </div>
+            );
+        };
+
+        const LEVELS = [
+            {
+                id: 1,
+                title: "Meet the Clock",
+                desc: "Can you find the numbers?",
+                color: "bg-blue-400",
+                instruction: "Tap the number:",
+                type: "identify_number",
+                count: 5
+            },
+            {
+                id: 2,
+                title: "Big & Small Hands",
+                desc: "Which hand is which?",
+                color: "bg-green-400",
+                instruction: "Tap the:",
+                type: "identify_hand",
+                count: 5
+            },
+            {
+                id: 3,
+                title: "Counting Minutes",
+                desc: "Let's count by fives!",
+                color: "bg-yellow-400",
+                instruction: "How many minutes is this?",
+                type: "identify_minutes",
+                count: 8
+            },
+            {
+                id: 4,
+                title: "It's O'Clock!",
+                desc: "Set the time to the hour.",
+                color: "bg-orange-400",
+                instruction: "Set the clock to:",
+                type: "set_time_easy",
+                count: 6
+            },
+            {
+                id: 5,
+                title: "Halves & Quarters",
+                desc: "A bit harder now!",
+                color: "bg-purple-400",
+                instruction: "Make the clock match:",
+                type: "set_time_medium",
+                count: 8
+            },
+            {
+                id: 6,
+                title: "Time Master",
+                desc: "You are a pro!",
+                color: "bg-red-400",
+                instruction: "What time is it?",
+                type: "read_time",
+                count: 8
+            },
+            {
+                id: 7,
+                title: "Time Typer",
+                desc: "Write the time you see!",
+                color: "bg-pink-500",
+                instruction: "Type the time you see!",
+                type: "write_time",
+                count: 5
+            }
+        ];
+
+        function App() {
+            const [gameState, setGameState] = useState('welcome');
+            const [currentLevelIdx, setCurrentLevelIdx] = useState(0);
+            const [questionIdx, setQuestionIdx] = useState(0);
+            const [score, setScore] = useState(0);
+            const [showConfetti, setShowConfetti] = useState(false);
+            const [mascotState, setMascotState] = useState('idle');
+            const [muted, setMuted] = useState(false);
+
+            const [hourHand, setHourHand] = useState(12);
+            const [minuteHand, setMinuteHand] = useState(0);
+            const [target, setTarget] = useState(null);
+            const [feedback, setFeedback] = useState("");
+
+            const [manualTime, setManualTime] = useState({ h: '', m: '' });
+            const [activeField, setActiveField] = useState('h');
+
+            const levelConfig = LEVELS[currentLevelIdx];
+
+            const generateQuestion = useCallback(() => {
+                const type = levelConfig.type;
+                let newTarget = {};
+
+                setManualTime({ h: '', m: '' });
+                setActiveField('h');
+
+                if (type === 'identify_number') {
+                    const num = Math.floor(Math.random() * 12) + 1;
+                    newTarget = { value: num, text: `${num}` };
+                    setHourHand(12); setMinuteHand(0);
+                }
+                else if (type === 'identify_hand') {
+                    const isHour = Math.random() > 0.5;
+                    newTarget = { value: isHour ? 'hour' : 'minute', text: isHour ? 'Hour Hand' : 'Minute Hand' };
+                    setHourHand(Math.floor(Math.random() * 12) + 1);
+                    setMinuteHand((Math.floor(Math.random() * 12)) * 5);
+                }
+                else if (type === 'identify_minutes') {
+                    const minIndex = Math.floor(Math.random() * 11) + 1;
+                    const mins = minIndex * 5;
+                    newTarget = { value: mins, text: `${mins} minutes` };
+                    setHourHand(12);
+                    setMinuteHand(mins);
+                }
+                else if (type === 'set_time_easy') {
+                    const h = Math.floor(Math.random() * 12) + 1;
+                    newTarget = { h, m: 0, text: `${h} O'Clock` };
+                    setHourHand(12); setMinuteHand(0);
+                }
+                else if (type === 'set_time_medium') {
+                    const h = Math.floor(Math.random() * 12) + 1;
+                    const mBase = Math.floor(Math.random() * 4);
+                    const m = mBase * 15;
+
+                    let text = "";
+                    if (m === 0) text = `${h} O'Clock`;
+                    else if (m === 15) text = `Quarter past ${h}`;
+                    else if (m === 30) text = `Half past ${h}`;
+                    else if (m === 45) text = `Quarter to ${h === 12 ? 1 : h + 1}`;
+
+                    newTarget = { h, m, text };
+                    setHourHand(12); setMinuteHand(0);
+                }
+                else if (type === 'read_time' || type === 'write_time') {
+                    const h = Math.floor(Math.random() * 12) + 1;
+                    const m = (Math.floor(Math.random() * 12)) * 5;
+                    newTarget = { h, m, text: `${h}:${m < 10 ? '0' + m : m}` };
+                    setHourHand(h); setMinuteHand(m);
+                }
+
+                setTarget(newTarget);
+                setFeedback("");
+                setMascotState('idle');
+            }, [levelConfig]);
+
+            useEffect(() => {
+                if (gameState === 'playing') {
+                    generateQuestion();
+                }
+            }, [gameState, questionIdx, currentLevelIdx, generateQuestion]);
+
+            const handleCorrect = () => {
+                if (!muted) playSound('correct');
+                setMascotState('happy');
+                setFeedback("Yay! Correct!");
+                setShowConfetti(true);
+                setScore(s => s + 10);
+
+                setTimeout(() => {
+                    setShowConfetti(false);
+                    setMascotState('idle');
+                    if (questionIdx + 1 >= levelConfig.count) {
+                        if (!muted) playSound('win');
+                        setGameState(currentLevelIdx + 1 >= LEVELS.length ? 'game_complete' : 'level_complete');
+                    } else {
+                        setQuestionIdx(q => q + 1);
+                    }
+                }, 1500);
+            };
+
+            const handleWrong = () => {
+                if (!muted) playSound('wrong');
+                setMascotState('sad');
+                setFeedback("Try again!");
+                setTimeout(() => setMascotState('idle'), 1000);
+            };
+
+            const handleNumberClick = (num) => {
+                if (levelConfig.type === 'identify_number') {
+                    if (num === target.value) handleCorrect();
+                    else handleWrong();
+                }
+            };
+
+            const handleHandClick = (whichHand) => {
+                if (levelConfig.type === 'identify_hand') {
+                    if (whichHand === target.value) handleCorrect();
+                    else handleWrong();
+                }
+            };
+
+            const handleOptionSelect = (val) => {
+                if (levelConfig.type === 'identify_minutes') {
+                    if (val === target.value) handleCorrect();
+                    else handleWrong();
+                } else if (levelConfig.type === 'read_time') {
+                    if (val === target.text) handleCorrect();
+                    else handleWrong();
+                }
+            };
+
+            const checkSetTime = () => {
+                let currentM = minuteHand;
+                let targetM = target.m;
+                let currentH = hourHand;
+                let targetH = target.h;
+
+                const mDiff = Math.abs(currentM - targetM);
+                let hDiff = Math.abs(currentH - targetH);
+                if (hDiff > 6) hDiff = 12 - hDiff;
+
+                if (mDiff === 0 && hDiff === 0) handleCorrect();
+                else handleWrong();
+            };
+
+            const handleKeypad = (val) => {
+                if (!muted) playSound('pop');
+
+                if (val === 'DEL') {
+                    setManualTime(prev => ({ ...prev, [activeField]: prev[activeField].slice(0, -1) }));
+                    return;
+                }
+
+                if (val === 'OK') {
+                    checkWriteTime();
+                    return;
+                }
+
+                setManualTime(prev => {
+                    const current = prev[activeField];
+                    if (current.length >= 2) return prev;
+                    return { ...prev, [activeField]: current + val };
+                });
+            };
+
+            const checkWriteTime = () => {
+                const h = parseInt(manualTime.h);
+                const m = parseInt(manualTime.m);
+
+                if (h === target.h && (m === target.m || (target.m === 0 && (isNaN(m) || m === 0)))) {
+                    handleCorrect();
+                } else {
+                    handleWrong();
+                }
+            };
+
+            const ClockFace = () => {
+                const svgRef = useRef(null);
+                const [isDragging, setIsDragging] = useState(null);
+
+                const getAngle = (event, rect) => {
+                    const clientX = event.touches ? event.touches[0].clientX : event.clientX;
+                    const clientY = event.touches ? event.touches[0].clientY : event.clientY;
+                    const x = clientX - (rect.left + rect.width / 2);
+                    const y = clientY - (rect.top + rect.height / 2);
+                    let angle = Math.atan2(y, x) * (180 / Math.PI) + 90;
+                    if (angle < 0) angle += 360;
+                    return angle;
+                };
+
+                const handlePointerDown = (e, hand) => {
+                    if (levelConfig.type.startsWith('set_time')) {
+                        setIsDragging(hand);
+                        e.preventDefault();
+                    } else if (levelConfig.type === 'identify_hand') {
+                        handleHandClick(hand);
+                    }
+                };
+
+                const handlePointerMove = (e) => {
+                    if (!isDragging || !svgRef.current) return;
+                    e.preventDefault();
+
+                    const rect = svgRef.current.getBoundingClientRect();
+                    const angle = getAngle(e, rect);
+
+                    if (isDragging === 'minute') {
+                        const snappedAngle = Math.round(angle / 30) * 30;
+                        let m = (snappedAngle / 6);
+                        if (m === 60) m = 0;
+                        setMinuteHand(m);
+                    }
+                    else if (isDragging === 'hour') {
+                        const snappedAngle = Math.round(angle / 30) * 30;
+                        let h = snappedAngle / 30;
+                        if (h === 0) h = 12;
+                        setHourHand(h);
+                    }
+                };
+
+                const handlePointerUp = () => {
+                    setIsDragging(null);
+                };
+
+                const minRot = minuteHand * 6;
+                const hourRot = (hourHand * 30) + (minuteHand * 0.5);
+
+                return (
+                    <div
+                        className="relative w-72 h-72 md:w-96 md:h-96 mx-auto select-none touch-none shrink-0"
+                        onPointerMove={handlePointerMove}
+                        onPointerUp={handlePointerUp}
+                        onPointerLeave={handlePointerUp}
+                    >
+                        <svg
+                            ref={svgRef}
+                            viewBox="-35 -35 270 270"
+                            className="w-full h-full drop-shadow-xl"
+                        >
+                            <circle cx="100" cy="100" r="95" fill="white" stroke="#3B82F6" strokeWidth="8" />
+
+                            {[...Array(12)].map((_, i) => {
+                                const min = i === 0 ? "00" : (i * 5).toString().padStart(2, '0');
+                                const angle = (i * 30 - 90) * (Math.PI / 180);
+                                const r = 120;
+                                const x = 100 + r * Math.cos(angle);
+                                const y = 100 + r * Math.sin(angle);
+
+                                return (
+                                    <text
+                                        key={`m-${min}`}
+                                        x={x} y={y}
+                                        dy="5"
+                                        textAnchor="middle"
+                                        className="text-sm font-bold fill-red-400 select-none"
+                                    >
+                                        {min}
+                                    </text>
+                                );
+                            })}
+
+                            {[...Array(12)].map((_, i) => {
+                                const num = i + 1;
+                                const angle = (num * 30 - 90) * (Math.PI / 180);
+                                const r = 75;
+                                const x = 100 + r * Math.cos(angle);
+                                const y = 100 + r * Math.sin(angle);
+
+                                return (
+                                    <g key={num} onClick={() => handleNumberClick(num)} className="cursor-pointer">
+                                        <circle
+                                            cx={x} cy={y} r="12"
+                                            fill={target && target.value === num && levelConfig.type === 'identify_number' && feedback ? "#86EFAC" : "transparent"}
+                                            className="hover:fill-blue-100 transition-colors"
+                                        />
+                                        <text
+                                            x={x} y={y}
+                                            dy="5"
+                                            textAnchor="middle"
+                                            className={`text-xl font-bold font-sans select-none ${levelConfig.type === 'identify_number' ? 'fill-blue-600' : 'fill-gray-700'}`}
+                                        >
+                                            {num}
+                                        </text>
+                                    </g>
+                                );
+                            })}
+
+                            {[...Array(60)].map((_, i) => {
+                                if (i % 5 === 0) return null;
+                                const angle = (i * 6 - 90) * (Math.PI / 180);
+                                const r1 = 88;
+                                const r2 = 92;
+                                return (
+                                    <line
+                                        key={i}
+                                        x1={100 + r1 * Math.cos(angle)} y1={100 + r1 * Math.sin(angle)}
+                                        x2={100 + r2 * Math.cos(angle)} y2={100 + r2 * Math.sin(angle)}
+                                        stroke="#CBD5E1" strokeWidth="2"
+                                    />
+                                );
+                            })}
+
+                            <g transform="translate(100, 100)">
+                                <circle cx="-15" cy="-10" r={mascotState === 'happy' ? 4 : 5} fill="#1E293B">
+                                    {mascotState === 'happy' && <animate attributeName="cy" values="-10;-12;-10" dur="0.5s" repeatCount="indefinite" />}
+                                </circle>
+                                <circle cx="15" cy="-10" r={mascotState === 'happy' ? 4 : 5} fill="#1E293B">
+                                    {mascotState === 'happy' && <animate attributeName="cy" values="-10;-12;-10" dur="0.5s" repeatCount="indefinite" />}
+                                </circle>
+                                {mascotState === 'happy' ? (
+                                    <path d="M-10 10 Q0 20 10 10" fill="none" stroke="#1E293B" strokeWidth="3" strokeLinecap="round" />
+                                ) : mascotState === 'sad' ? (
+                                    <path d="M-10 15 Q0 5 10 15" fill="none" stroke="#1E293B" strokeWidth="3" strokeLinecap="round" />
+                                ) : (
+                                    <path d="M-5 15 Q0 15 5 15" fill="none" stroke="#1E293B" strokeWidth="3" strokeLinecap="round" />
+                                )}
+                            </g>
+
+                            <g
+                                transform={`rotate(${hourRot} 100 100)`}
+                                className={`${levelConfig.type.startsWith('set_time') || levelConfig.type === 'identify_hand' ? isDragging === 'hour' ? 'cursor-grabbing' : 'cursor-grab' : ''}`}
+                                onPointerDown={(e) => handlePointerDown(e, 'hour')}
+                            >
+                                <rect x="85" y="40" width="30" height="70" rx="10" fill="transparent" />
+                                <rect x="94" y="50" width="12" height="60" rx="6" fill="#3B82F6" stroke="white" strokeWidth="2" />
+                                {isDragging === 'hour' && <circle cx="100" cy="50" r="15" fill="rgba(59, 130, 246, 0.3)" />}
+                            </g>
+
+                            <g
+                                transform={`rotate(${minRot} 100 100)`}
+                                className={`${levelConfig.type.startsWith('set_time') || levelConfig.type === 'identify_hand' ? isDragging === 'minute' ? 'cursor-grabbing' : 'cursor-grab' : ''}`}
+                                onPointerDown={(e) => handlePointerDown(e, 'minute')}
+                            >
+                                <rect x="85" y="15" width="30" height="95" rx="10" fill="transparent" />
+                                <rect x="96" y="25" width="8" height="85" rx="4" fill="#EF4444" stroke="white" strokeWidth="2" />
+                                {isDragging === 'minute' && <circle cx="100" cy="25" r="15" fill="rgba(239, 68, 68, 0.3)" />}
+                            </g>
+
+                            <circle cx="100" cy="100" r="6" fill="#F59E0B" stroke="white" strokeWidth="2" />
+                        </svg>
+                    </div>
+                );
+            };
+
+            const Keypad = () => {
+                return (
+                    <div className="grid grid-cols-3 gap-2 w-full max-w-xs mt-4">
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
+                            <button
+                                key={num}
+                                onClick={() => handleKeypad(num.toString())}
+                                className="h-12 bg-white rounded-lg shadow-sm border border-gray-200 text-xl font-bold text-gray-700 hover:bg-blue-50 active:bg-blue-100"
+                            >
+                                {num}
+                            </button>
+                        ))}
+                        <button
+                            onClick={() => handleKeypad('DEL')}
+                            className="h-12 bg-red-50 rounded-lg shadow-sm border border-red-100 text-red-500 flex items-center justify-center hover:bg-red-100"
+                        >
+                            <DeleteIcon size={20} />
+                        </button>
+                        <button
+                            onClick={() => handleKeypad('0')}
+                            className="h-12 bg-white rounded-lg shadow-sm border border-gray-200 text-xl font-bold text-gray-700 hover:bg-blue-50 active:bg-blue-100"
+                        >
+                            0
+                        </button>
+                        <button
+                            onClick={() => handleKeypad('OK')}
+                            className="h-12 bg-green-500 rounded-lg shadow-sm border border-green-600 text-white flex items-center justify-center hover:bg-green-400"
+                        >
+                            <Check size={24} />
+                        </button>
+                    </div>
+                );
+            };
+
+            const WelcomeScreen = () => (
+                <div className="flex flex-col items-center justify-center h-full space-y-8 animate-fade-in p-6 text-center">
+                    <div className="relative">
+                        <div className="w-32 h-32 bg-yellow-400 rounded-full flex items-center justify-center shadow-lg animate-bounce">
+                            <span className="text-6xl">⏰</span>
+                        </div>
+                        <div className="absolute -top-2 -right-2 text-4xl animate-pulse">✨</div>
+                    </div>
+                    <div>
+                        <h1 className="text-5xl font-extrabold text-blue-600 mb-2 font-display tracking-tight">Time Adventure!</h1>
+                        <p className="text-xl text-gray-600">Learn to read the clock with Tick-Tock.</p>
+                    </div>
+                    <div className="flex flex-col gap-4 w-full max-w-xs">
+                        <button
+                            onClick={() => {
+                                if (!muted) playSound('pop');
+                                setCurrentLevelIdx(0);
+                                setQuestionIdx(0);
+                                setGameState('playing');
+                            }}
+                            className="group relative px-8 py-4 bg-blue-500 text-white text-2xl font-bold rounded-2xl shadow-[0_8px_0_rgb(29,78,216)] active:shadow-[0_4px_0_rgb(29,78,216)] active:translate-y-1 transition-all hover:bg-blue-400"
+                        >
+                            <span className="flex items-center justify-center gap-2">
+                                Start Journey <Play fill="currentColor" />
+                            </span>
+                        </button>
+                        <button
+                            onClick={() => { if (!muted) playSound('pop'); setGameState('level_select'); }}
+                            className="px-8 py-3 bg-white text-blue-500 border-2 border-blue-200 text-xl font-bold rounded-2xl shadow-sm hover:bg-blue-50 active:scale-95 transition-all"
+                        >
+                            <span className="flex items-center justify-center gap-2">
+                                Choose Level <GridIcon size={20} />
+                            </span>
+                        </button>
+                    </div>
+                </div>
+            );
+
+            const LevelSelectScreen = () => (
+                <div className="flex flex-col h-full bg-slate-50 overflow-y-auto">
+                    <div className="p-4 flex items-center gap-4 bg-white shadow-sm sticky top-0 z-20">
+                        <button
+                            onClick={() => setGameState('welcome')}
+                            className="p-2 bg-gray-100 rounded-full hover:bg-gray-200"
+                        >
+                            <HomeIcon size={24} className="text-gray-600" />
+                        </button>
+                        <h2 className="text-2xl font-bold text-gray-800">Select Level</h2>
+                    </div>
+                    <div className="p-6 grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                        {LEVELS.map((level, idx) => (
+                            <button
+                                key={level.id}
+                                onClick={() => {
+                                    setCurrentLevelIdx(idx);
+                                    setQuestionIdx(0);
+                                    setGameState('playing');
+                                    if (!muted) playSound('pop');
+                                }}
+                                className="flex items-center gap-4 p-4 bg-white rounded-2xl shadow-sm border-2 border-transparent hover:border-blue-300 transition-all active:scale-95 text-left"
+                            >
+                                <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-sm ${level.color}`}>
+                                    {idx + 1}
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-gray-800">{level.title}</h3>
+                                    <p className="text-sm text-gray-500">{level.desc}</p>
+                                </div>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            );
+
+            const LevelCompleteScreen = () => (
+                <div className="flex flex-col items-center justify-center h-full space-y-6 text-center animate-fade-in p-6">
+                    <Trophy size={80} className="text-yellow-500 animate-bounce" />
+                    <h2 className="text-4xl font-bold text-green-600">Level Complete!</h2>
+                    <p className="text-xl text-gray-600">You earned {levelConfig.count} Stars!</p>
+                    <div className="flex gap-2">
+                        <Star size={40} className="fill-yellow-400 text-yellow-500 animate-[spin_1s_ease-out]" />
+                        <Star size={40} className="fill-yellow-400 text-yellow-500 animate-[spin_1s_ease-out_0.2s]" />
+                        <Star size={40} className="fill-yellow-400 text-yellow-500 animate-[spin_1s_ease-out_0.4s]" />
+                    </div>
+                    <button
+                        onClick={() => {
+                            setCurrentLevelIdx(c => c + 1);
+                            setQuestionIdx(0);
+                            setGameState('playing');
+                        }}
+                        className="px-8 py-4 bg-green-500 text-white text-2xl font-bold rounded-xl shadow-lg hover:bg-green-400 transition-colors flex items-center gap-2"
+                    >
+                        Next Level <ArrowRight />
+                    </button>
+                    <button
+                        onClick={() => setGameState('level_select')}
+                        className="text-gray-500 font-bold hover:text-gray-700 underline"
+                    >
+                        Back to Menu
+                    </button>
+                </div>
+            );
+
+            const GameCompleteScreen = () => (
+                <div className="flex flex-col items-center justify-center h-full space-y-6 text-center animate-fade-in p-6">
+                    <h1 className="text-5xl font-bold text-purple-600">🎉 YOU DID IT! 🎉</h1>
+                    <p className="text-2xl text-gray-700">You are a Time Master!</p>
+                    <div className="text-xl bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                        Final Score: {score}
+                    </div>
+                    <button
+                        onClick={() => window.location.reload()}
+                        className="px-8 py-4 bg-blue-500 text-white text-xl font-bold rounded-xl shadow-lg hover:bg-blue-400 transition-colors flex items-center gap-2"
+                    >
+                        Play Again <RefreshCcw />
+                    </button>
+                    <Confetti />
+                </div>
+            );
+
+            const PlayingScreen = () => {
+                let options = [];
+                if (target && (levelConfig.type === 'identify_minutes' || levelConfig.type === 'read_time')) {
+                    const correct = levelConfig.type === 'identify_minutes' ? target.value : target.text;
+                    options = [correct];
+                    while (options.length < 3) {
+                        let fake;
+                        if (levelConfig.type === 'identify_minutes') {
+                            fake = (Math.floor(Math.random() * 11) + 1) * 5;
+                        } else {
+                            const fh = Math.floor(Math.random() * 12) + 1;
+                            const fm = (Math.floor(Math.random() * 12)) * 5;
+                            fake = `${fh}:${fm < 10 ? '0' + fm : fm}`;
+                        }
+                        if (!options.includes(fake)) options.push(fake);
+                    }
+                    options.sort(() => Math.random() - 0.5);
+                }
+
+                const progressPercent = ((questionIdx) / levelConfig.count) * 100;
+                const hideTargetInInstruction = ['identify_minutes', 'read_time', 'write_time'].includes(levelConfig.type);
+
+                return (
+                    <div className="flex flex-col h-full max-w-2xl mx-auto">
+                        <div className="flex justify-between items-center p-4 bg-white/50 backdrop-blur-sm rounded-b-2xl shadow-sm shrink-0 z-20">
+                            <div className="flex items-center gap-2">
+                                <button onClick={() => setGameState('level_select')} className="p-2 bg-gray-100 rounded-lg hover:bg-gray-200 text-gray-600 mr-2">
+                                    <GridIcon size={20} />
+                                </button>
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shadow-md ${levelConfig.color}`}>
+                                    {currentLevelIdx + 1}
+                                </div>
+                                <div className="flex flex-col">
+                                    <span className="text-sm font-bold text-gray-500 uppercase tracking-wide">Level</span>
+                                    <span className="font-bold text-gray-800 leading-none">{levelConfig.title}</span>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-1 bg-yellow-100 px-3 py-1 rounded-full text-yellow-700 font-bold border border-yellow-200">
+                                    <Star size={16} fill="currentColor" /> {score}
+                                </div>
+                                <button onClick={() => setMuted(!muted)} className="p-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200">
+                                    {muted ? <VolumeX size={20} /> : <Volume2 size={20} />}
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="px-8 mt-4 shrink-0">
+                            <div className="h-4 w-full bg-gray-200 rounded-full overflow-hidden">
+                                <div
+                                    className={`h-full ${levelConfig.color} transition-all duration-500`}
+                                    style={{ width: `${progressPercent}%` }}
+                                />
+                            </div>
+                            <div className="text-center text-xs text-gray-500 mt-1 font-bold">
+                                Question {questionIdx + 1} of {levelConfig.count}
+                            </div>
+                        </div>
+
+                        <div className="flex-1 flex flex-col items-center p-4 relative overflow-y-auto w-full">
+                            {showConfetti && <Confetti />}
+
+                            <div className="mb-4 bg-white px-6 py-4 rounded-2xl shadow-lg border-2 border-blue-100 text-center animate-bounce-short z-10 shrink-0">
+                                <h3 className="text-xl md:text-2xl text-gray-700 font-medium">
+                                    {levelConfig.instruction}
+                                    {!hideTargetInInstruction && (
+                                        <span className="font-bold text-blue-600 block text-3xl mt-1">{target?.text}</span>
+                                    )}
+                                </h3>
+                            </div>
+
+                            <ClockFace />
+
+                            <div className="h-12 mt-2 flex items-center justify-center shrink-0">
+                                {feedback && (
+                                    <div className={`px-6 py-2 rounded-full font-bold text-lg animate-pop ${feedback.includes('Correct') ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
+                                        {feedback}
+                                    </div>
+                                )}
+                            </div>
+
+                            {(levelConfig.type === 'identify_minutes' || levelConfig.type === 'read_time') && (
+                                <div className="mt-4 grid grid-cols-3 gap-4 w-full max-w-md shrink-0 pb-8">
+                                    {options.map((opt, i) => (
+                                        <button
+                                            key={i}
+                                            onClick={() => { if (!muted) playSound('pop'); handleOptionSelect(opt); }}
+                                            className="py-4 bg-white border-b-4 border-blue-200 text-blue-600 font-bold text-2xl rounded-xl hover:bg-blue-50 active:translate-y-1 active:border-b-0 transition-all shadow-sm"
+                                        >
+                                            {opt}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+
+                            {levelConfig.type === 'write_time' && (
+                                <div className="flex flex-col items-center shrink-0 pb-8 w-full">
+                                    <div className="flex items-center gap-2 text-4xl font-mono font-bold text-gray-700 mb-2">
+                                        <div
+                                            onClick={() => setActiveField('h')}
+                                            className={`bg-white px-4 py-2 rounded-lg border-2 min-w-[3ch] text-center cursor-pointer ${activeField === 'h' ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-300'}`}
+                                        >
+                                            {manualTime.h || <span className="text-gray-200">H</span>}
+                                        </div>
+                                        <span>:</span>
+                                        <div
+                                            onClick={() => setActiveField('m')}
+                                            className={`bg-white px-4 py-2 rounded-lg border-2 min-w-[3ch] text-center cursor-pointer ${activeField === 'm' ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-300'}`}
+                                        >
+                                            {manualTime.m || <span className="text-gray-200">M</span>}
+                                        </div>
+                                    </div>
+                                    <Keypad />
+                                </div>
+                            )}
+
+                            {levelConfig.type.startsWith('set_time') && (
+                                <button
+                                    onClick={() => { if (!muted) playSound('pop'); checkSetTime(); }}
+                                    className="mt-6 px-12 py-3 bg-green-500 text-white font-bold text-xl rounded-full shadow-lg shadow-green-200 hover:bg-green-400 active:scale-95 transition-all shrink-0 pb-8"
+                                >
+                                    Check Answer
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                );
+            };
+
+            return (
+                <div className="w-full h-screen bg-slate-50 overflow-hidden font-sans selection:bg-blue-200 flex justify-center">
+                    <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none opacity-40">
+                        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-blue-200 rounded-full blur-3xl"></div>
+                        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-yellow-200 rounded-full blur-3xl"></div>
+                    </div>
+
+                    <div className="relative z-10 w-full h-full max-w-4xl shadow-2xl bg-slate-50">
+                        {gameState === 'welcome' && <WelcomeScreen />}
+                        {gameState === 'level_select' && <LevelSelectScreen />}
+                        {gameState === 'playing' && <PlayingScreen />}
+                        {gameState === 'level_complete' && <LevelCompleteScreen />}
+                        {gameState === 'game_complete' && <GameCompleteScreen />}
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+
+</html>

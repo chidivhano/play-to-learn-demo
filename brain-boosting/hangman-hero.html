@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hangman Hero (Easy)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        /* Custom styles - Keeping the light theme */
+        body {
+            font-family: 'Press Start 2P', cursive;
+            background: linear-gradient(135deg, #89f7fe 0%, #66a6ff 100%);
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 1rem;
+        }
+
+        .game-container {
+            background-color: rgba(255, 255, 255, 0.75);
+            padding: 1.5rem;
+            border-radius: 1rem;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+            text-align: center;
+            max-width: 90%;
+            width: 600px;
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            position: relative;
+            /* Added for potential absolute positioning inside */
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            margin-bottom: 0.5rem;
+            color: #2c5282;
+            text-shadow: 2px 2px 0px #a0aec0;
+        }
+
+        p {
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+            color: #4a5568;
+        }
+
+        .hint-display {
+            font-size: 0.8rem;
+            margin-bottom: 1rem;
+            color: #1d4ed8;
+            background-color: rgba(255, 255, 255, 0.6);
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            display: inline-block;
+        }
+
+        /* Area for the Hangman SVG */
+        .attempts-visual {
+            width: 150px;
+            height: 180px;
+            margin: 0 auto 1rem auto;
+            position: relative;
+        }
+
+        #hangman-svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Style for SVG stickman parts */
+        #hangman-svg line,
+        #hangman-svg circle {
+            stroke: #c53030;
+            /* Red color for stickman */
+            stroke-width: 3;
+            /* Standard line thickness */
+            fill: none;
+            stroke-linecap: round;
+        }
+
+        /* Style specifically for the gallows */
+        .gallows {
+            stroke: #4a5568;
+            stroke-width: 4;
+        }
+
+
+        .word-display {
+            font-size: 1.8rem;
+            letter-spacing: 0.6rem;
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+            background-color: rgba(0, 0, 0, 0.05);
+            border-radius: 0.5rem;
+            min-height: 4rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            color: #1a202c;
+        }
+
+        .word-display span {
+            display: inline-block;
+            margin: 0 0.3rem;
+        }
+
+        .keyboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(35px, 1fr));
+            gap: 0.4rem;
+            margin-top: 1.5rem;
+            margin-bottom: 1.5rem;
+            max-width: 100%;
+        }
+
+        .key {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 0.9rem;
+            padding: 0.6rem 0;
+            border: none;
+            border-radius: 0.5rem;
+            background: linear-gradient(145deg, #4299e1, #63b3ed);
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2);
+            text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.3);
+            min-width: 35px;
+        }
+
+        .key:hover:not(:disabled) {
+            background: linear-gradient(145deg, #3182ce, #4299e1);
+            transform: translateY(-2px);
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3);
+        }
+
+        .key:active:not(:disabled) {
+            transform: translateY(0px);
+            box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2);
+        }
+
+        .key:disabled {
+            background: #cbd5e0;
+            color: #a0aec0;
+            cursor: not-allowed;
+            opacity: 0.8;
+            text-shadow: none;
+            box-shadow: none;
+        }
+
+        .status-area {
+            margin-bottom: 1.5rem;
+            font-size: 0.8rem;
+            min-height: 1.5em;
+            color: #4a5568;
+        }
+
+        .message-box {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #2d3748;
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            display: none;
+            font-size: 0.9rem;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        /* Container for bottom buttons */
+        .button-container {
+            margin-top: 1rem;
+            display: flex;
+            /* Use flexbox for alignment */
+            justify-content: center;
+            /* Center buttons */
+            gap: 1rem;
+            /* Space between buttons */
+            flex-wrap: wrap;
+            /* Allow wrapping on small screens */
+        }
+
+        /* Shared styles for bottom buttons */
+        .game-button {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 0.9rem;
+            padding: 0.7rem 1.2rem;
+            border: none;
+            border-radius: 0.5rem;
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2);
+            text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.3);
+            text-decoration: none;
+            /* Remove underline from link */
+            display: inline-block;
+            /* Make link behave like button */
+        }
+
+        .game-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3);
+        }
+
+        .game-button:active {
+            transform: translateY(0px);
+            box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Specific style for Play Again Button */
+        .play-again-btn {
+            background: linear-gradient(145deg, #48bb78, #68d391);
+            /* Green */
+            display: none;
+            /* Hidden initially */
+        }
+
+        .play-again-btn:hover {
+            background: linear-gradient(145deg, #38a169, #48bb78);
+        }
+
+        /* Specific style for Home Button */
+        .home-btn {
+            background: linear-gradient(145deg, #a0aec0, #cbd5e0);
+            /* Gray */
+            color: #2d3748;
+            /* Dark text for contrast */
+            text-shadow: none;
+            /* Remove shadow for better readability on gray */
+        }
+
+        .home-btn:hover {
+            background: linear-gradient(145deg, #718096, #a0aec0);
+        }
+
+
+        /* Media query adjustments */
+        @media (max-width: 640px) {
+            body {
+                padding: 0.5rem;
+            }
+
+            .game-container {
+                padding: 1rem;
+                max-width: 95%;
+            }
+
+            h1 {
+                font-size: 1.5rem;
+            }
+
+            p {
+                font-size: 0.8rem;
+            }
+
+            .hint-display {
+                font-size: 0.75rem;
+                padding: 0.4rem 0.8rem;
+            }
+
+            .attempts-visual {
+                width: 120px;
+                height: 150px;
+            }
+
+            .word-display {
+                font-size: 1.3rem;
+                letter-spacing: 0.4rem;
+                padding: 0.8rem;
+            }
+
+            .keyboard {
+                gap: 0.3rem;
+                grid-template-columns: repeat(auto-fit, minmax(30px, 1fr));
+            }
+
+            .key {
+                font-size: 0.8rem;
+                padding: 0.5rem 0;
+                min-width: 30px;
+            }
+
+            .status-area {
+                font-size: 0.75rem;
+            }
+
+            .message-box {
+                font-size: 0.85rem;
+                padding: 0.8rem 1rem;
+                width: 85%;
+            }
+
+            .game-button {
+                /* Adjust shared button style */
+                font-size: 0.85rem;
+                padding: 0.6rem 1rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="game-container">
+        <h1>Hangman Hero</h1>
+        <p>Guess letters to find the secret word!</p>
+
+        <div id="hint-display" class="hint-display">Hint will appear here</div>
+
+        <div id="attempts-visual" class="attempts-visual">
+            <svg id="hangman-svg" viewBox="0 0 150 180" preserveAspectRatio="xMidYMid meet"></svg>
+        </div>
+
+        <div id="word-display" class="word-display"></div>
+
+        <div id="status-area" class="status-area">
+            Incorrect Guesses: <span id="incorrect-guesses"></span>
+        </div>
+
+        <div id="keyboard" class="keyboard"></div>
+
+        <div class="button-container">
+            <a href="../../../index.html" id="home-btn" class="game-button home-btn">Home</a>
+            <button id="play-again-btn" class="game-button play-again-btn">Play Again</button>
+        </div>
+    </div>
+
+    <div id="message-box" class="message-box"></div>
+
+    <script>
+        // --- Game Elements ---
+        const wordDisplayEl = document.getElementById('word-display');
+        const keyboardEl = document.getElementById('keyboard');
+        const statusAreaEl = document.getElementById('status-area');
+        const incorrectGuessesEl = document.getElementById('incorrect-guesses');
+        const attemptsVisualEl = document.getElementById('attempts-visual');
+        const hangmanSvgEl = document.getElementById('hangman-svg'); // SVG element
+        const playAgainBtn = document.getElementById('play-again-btn');
+        const messageBoxEl = document.getElementById('message-box');
+        const hintDisplayEl = document.getElementById('hint-display');
+        // Home button element is just a link, no specific JS needed unless for dynamic actions
+
+        // --- Game Variables ---
+        const wordList = [
+            { word: "CAT", hint: "A pet that meows" },
+            { word: "DOG", hint: "A pet that barks" },
+            { word: "SUN", hint: "Shines in the sky during the day" },
+            { word: "BED", hint: "You sleep in it" },
+            { word: "BALL", hint: "Round toy to throw or kick" },
+            { word: "BOOK", hint: "You read stories in it" },
+            { word: "TREE", hint: "Tall plant with leaves" },
+            { word: "FISH", hint: "Swims in water" },
+            { word: "STAR", hint: "Shines in the sky at night" },
+            { word: "CAKE", hint: "Sweet treat for birthdays" },
+            { word: "MILK", hint: "White drink from a cow" },
+            { word: "FROG", hint: "Jumps and says 'ribbit'" }
+        ];
+        const maxAttempts = 6;
+        let currentWord = '';
+        let currentHint = '';
+        let guessedLetters = [];
+        let incorrectGuesses = [];
+        let attemptsLeft = maxAttempts;
+        let gameActive = true;
+        const svgNS = "http://www.w3.org/2000/svg";
+
+        // --- Functions ---
+
+        function showMessage(message, duration = 3000) {
+            messageBoxEl.textContent = message;
+            messageBoxEl.style.display = 'block';
+            if (duration > 0) {
+                setTimeout(() => {
+                    messageBoxEl.style.display = 'none';
+                }, duration);
+            }
+        }
+
+        function selectWord() {
+            const randomIndex = Math.floor(Math.random() * wordList.length);
+            const selected = wordList[randomIndex];
+            currentWord = selected.word;
+            currentHint = selected.hint;
+        }
+
+        function drawSvgElement(type, attributes) {
+            const element = document.createElementNS(svgNS, type);
+            for (const key in attributes) {
+                element.setAttribute(key, attributes[key]);
+            }
+            hangmanSvgEl.appendChild(element);
+            return element;
+        }
+
+        function setupHangmanDrawing() {
+            hangmanSvgEl.innerHTML = ''; // Clear previous SVG content
+            // Draw Gallows
+            drawSvgElement('line', { x1: 10, y1: 170, x2: 90, y2: 170, class: 'gallows' }); // Base
+            drawSvgElement('line', { x1: 50, y1: 170, x2: 50, y2: 20, class: 'gallows' });  // Pole
+            drawSvgElement('line', { x1: 50, y1: 20, x2: 110, y2: 20, class: 'gallows' });  // Top bar
+            drawSvgElement('line', { x1: 110, y1: 20, x2: 110, y2: 40, class: 'gallows' }); // Rope
+        }
+
+        // --- Reverted function to draw the classic stickman ---
+        function drawHangmanPart(incorrectCount) {
+            // No specific classes needed now, default styles apply
+            switch (incorrectCount) {
+                case 1: // Head
+                    drawSvgElement('circle', { cx: 110, cy: 55, r: 15 });
+                    break;
+                case 2: // Body
+                    drawSvgElement('line', { x1: 110, y1: 70, x2: 110, y2: 110 });
+                    break;
+                case 3: // Left Arm
+                    drawSvgElement('line', { x1: 110, y1: 80, x2: 90, y2: 100 });
+                    break;
+                case 4: // Right Arm
+                    drawSvgElement('line', { x1: 110, y1: 80, x2: 130, y2: 100 });
+                    break;
+                case 5: // Left Leg
+                    drawSvgElement('line', { x1: 110, y1: 110, x2: 90, y2: 130 });
+                    break;
+                case 6: // Right Leg
+                    drawSvgElement('line', { x1: 110, y1: 110, x2: 130, y2: 130 });
+                    break;
+            }
+        }
+
+
+        function initGame() {
+            selectWord();
+            guessedLetters = [];
+            incorrectGuesses = [];
+            attemptsLeft = maxAttempts;
+            gameActive = true;
+
+            // Reset UI
+            wordDisplayEl.innerHTML = '';
+            incorrectGuessesEl.textContent = '';
+            playAgainBtn.style.display = 'none'; // Hide play again button initially
+            messageBoxEl.style.display = 'none';
+            hintDisplayEl.textContent = `Hint: ${currentHint}`;
+
+            setupHangmanDrawing(); // Setup gallows and clear old figure
+
+            // Create word display
+            for (const letter of currentWord) {
+                const span = document.createElement('span');
+                span.textContent = '_';
+                wordDisplayEl.appendChild(span);
+            }
+
+            createKeyboard();
+
+            console.log("Word to guess:", currentWord);
+        }
+
+        function createKeyboard() {
+            keyboardEl.innerHTML = '';
+            const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            for (const letter of alphabet) {
+                const button = document.createElement('button');
+                button.textContent = letter;
+                button.classList.add('key');
+                button.addEventListener('click', () => handleGuess(letter));
+                keyboardEl.appendChild(button);
+            }
+        }
+
+        function handleGuess(letter) {
+            if (!gameActive) return;
+
+            letter = letter.toUpperCase();
+
+            if (guessedLetters.includes(letter) || incorrectGuesses.includes(letter)) {
+                showMessage("Already guessed!", 1500);
+                return;
+            }
+
+            const keys = keyboardEl.querySelectorAll('.key');
+            keys.forEach(key => {
+                if (key.textContent === letter) {
+                    key.disabled = true;
+                }
+            });
+
+            if (currentWord.includes(letter)) {
+                guessedLetters.push(letter);
+                const wordSpans = wordDisplayEl.querySelectorAll('span');
+                let allLettersGuessed = true;
+                wordSpans.forEach((span, index) => {
+                    if (currentWord[index] === letter) {
+                        span.textContent = letter;
+                    }
+                    if (span.textContent === '_') {
+                        allLettersGuessed = false;
+                    }
+                });
+
+                if (allLettersGuessed) {
+                    winGame();
+                }
+
+            } else {
+                incorrectGuesses.push(letter);
+                attemptsLeft--;
+                incorrectGuessesEl.textContent = incorrectGuesses.join(', ');
+                // Draw the next stickman part
+                drawHangmanPart(incorrectGuesses.length); // Call the reverted drawing function
+
+                if (attemptsLeft <= 0) {
+                    loseGame();
+                }
+            }
+        }
+
+        function winGame() {
+            gameActive = false;
+            showMessage(`🎉 Yay! You got it: ${currentWord}!`, 0);
+            playAgainBtn.style.display = 'inline-block'; // Show play again button
+            disableKeyboard();
+        }
+
+        function loseGame() {
+            gameActive = false;
+            showMessage(`😵 Oh no! The word was: ${currentWord}`, 0);
+            const wordSpans = wordDisplayEl.querySelectorAll('span');
+            wordSpans.forEach((span, index) => {
+                span.textContent = currentWord[index];
+            });
+            playAgainBtn.style.display = 'inline-block'; // Show play again button
+            disableKeyboard();
+        }
+
+        function disableKeyboard() {
+            const keys = keyboardEl.querySelectorAll('.key');
+            keys.forEach(key => key.disabled = true);
+        }
+
+        // --- Event Listeners ---
+        playAgainBtn.addEventListener('click', initGame);
+
+        document.addEventListener('keydown', (event) => {
+            if (!gameActive) return;
+            const letter = event.key.toUpperCase();
+            if (letter.length === 1 && letter >= 'A' && letter <= 'Z') {
+                const keys = keyboardEl.querySelectorAll('.key');
+                keys.forEach(key => {
+                    if (key.textContent === letter && !key.disabled) {
+                        handleGuess(letter);
+                    }
+                });
+            }
+        });
+
+        // --- Initial Game Setup ---
+        window.onload = initGame;
+
+    </script>
+</body>
+
+</html>

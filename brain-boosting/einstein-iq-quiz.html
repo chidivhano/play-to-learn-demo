@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Einstein IQ Challenge</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@400;700&display=swap"
+        rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #1a1a2e;
+            /* Dark blue-purple background */
+            color: #e0e0e0;
+            /* Light grey text */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            /* Prevent scrollbars during transitions */
+        }
+
+        .game-container {
+            background-color: #162447;
+            /* Darker blue */
+            border-radius: 20px;
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.3), 0 0 60px rgba(0, 128, 255, 0.2);
+            /* Neon blue glow */
+            padding: 20px;
+            width: 90%;
+            max-width: 600px;
+            text-align: center;
+            border: 2px solid #00ffff;
+            /* Cyan border */
+            position: relative;
+            overflow: hidden;
+            /* For pseudo-elements */
+        }
+
+        .game-container::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: conic-gradient(transparent,
+                    rgba(0, 255, 255, 0.1),
+                    transparent 30%);
+            animation: rotate 10s linear infinite;
+            z-index: 0;
+        }
+
+        @keyframes rotate {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+
+        .content-wrapper {
+            position: relative;
+            /* Ensure content is above the pseudo-element */
+            z-index: 1;
+        }
+
+        h1,
+        h2 {
+            font-family: 'Orbitron', sans-serif;
+            /* Techy font for titles */
+            color: #00ffff;
+            /* Cyan */
+            text-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff;
+        }
+
+        .btn {
+            background-color: #1f4287;
+            /* Darker blue button */
+            color: #00ffff;
+            /* Cyan text */
+            border: 2px solid #00ffff;
+            padding: 12px 28px;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.5), inset 0 0 5px rgba(0, 255, 255, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn:hover {
+            background-color: #00ffff;
+            color: #162447;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.8), inset 0 0 10px rgba(0, 255, 255, 0.5);
+            transform: translateY(-3px);
+        }
+
+        .btn:active {
+            transform: translateY(-1px);
+        }
+
+        .question-container {
+            margin-top: 30px;
+            margin-bottom: 30px;
+            min-height: 100px;
+            /* Ensure space for question */
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .option-btn {
+            background-color: #27496d;
+            /* Medium blue */
+            color: #e0e0e0;
+            border: 1px solid #0077b6;
+            /* Lighter blue border */
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: left;
+        }
+
+        .option-btn:hover {
+            background-color: #0096c7;
+            color: #ffffff;
+            border-color: #00ffff;
+        }
+
+        .option-btn.correct {
+            background-color: #28a745 !important;
+            /* Green for correct */
+            color: white !important;
+            border-color: #1e7e34 !important;
+        }
+
+        .option-btn.incorrect {
+            background-color: #dc3545 !important;
+            /* Red for incorrect */
+            color: white !important;
+            border-color: #b21f2d !important;
+        }
+
+        .timer-container {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.8rem;
+            color: #ffab00;
+            /* Amber for timer */
+            margin-bottom: 20px;
+            text-shadow: 0 0 8px #ffab00;
+        }
+
+        .score-container {
+            margin-top: 30px;
+            font-size: 1.5rem;
+        }
+
+        .einstein-image {
+            width: 150px;
+            height: auto;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 3px solid #00ffff;
+            box-shadow: 0 0 15px #00ffff;
+        }
+
+        .progress-bar-container {
+            width: 80%;
+            height: 20px;
+            background-color: #2c3e50;
+            /* Dark grey-blue */
+            border-radius: 10px;
+            margin: 20px auto;
+            overflow: hidden;
+            border: 1px solid #0077b6;
+        }
+
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            /* Initial width */
+            background-color: #00ffff;
+            /* Cyan */
+            transition: width 0.3s ease-in-out;
+            border-radius: 8px 0 0 8px;
+            /* Keep left radius */
+        }
+
+        /* Screen transitions */
+        .screen {
+            opacity: 1;
+            transform: scale(1);
+            transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+        }
+
+        .screen.hidden {
+            opacity: 0;
+            transform: scale(0.95);
+            pointer-events: none;
+            /* Prevent interaction with hidden screens */
+            position: absolute;
+            /* Take out of flow */
+            width: 100%;
+            /* Ensure it doesn't affect layout when hidden */
+            left: 0;
+            top: 0;
+        }
+
+        /* For the image on the start screen */
+        .start-screen-image-container {
+            background-image: url('https://placehold.co/600x300/1a1a2e/00ffff?text=Einstein+Sketch&font=orbitron');
+            /* Placeholder, ideally a thematic image */
+            background-size: cover;
+            background-position: center;
+            height: 200px;
+            /* Adjust as needed */
+            border-radius: 15px;
+            margin-bottom: 25px;
+            border: 2px solid #00ffff;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.4);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .start-screen-image-container img {
+            max-width: 80%;
+            max-height: 80%;
+            object-fit: contain;
+            /* Ensures the image fits without cropping, maintaining aspect ratio */
+        }
+
+        .feedback-message {
+            margin-top: 15px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            min-height: 25px;
+            /* Reserve space */
+        }
+
+        .feedback-message.correct {
+            color: #28a745;
+            /* Green */
+            text-shadow: 0 0 5px #28a745;
+        }
+
+        .feedback-message.incorrect {
+            color: #dc3545;
+            /* Red */
+            text-shadow: 0 0 5px #dc3545;
+        }
+
+        /* Styling for the Einstein image from the user's upload */
+        .user-einstein-image {
+            width: 100%;
+            /* Make it responsive within its container */
+            max-width: 300px;
+            /* Max width to prevent it from becoming too large */
+            height: auto;
+            border-radius: 10px;
+            margin: 0 auto 20px auto;
+            /* Center it and add bottom margin */
+            display: block;
+            /* Ensure it behaves as a block element for centering */
+            border: 3px solid #00ffff;
+            box-shadow: 0 0 15px #00ffff;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="game-container">
+        <div class="content-wrapper">
+            <div id="start-screen" class="screen">
+                <img src="https://ai.labs.google.com/serve_file/uploaded_image_blob/image_d1e551.jpg-770e926e-a2df-4f8e-a3da-739707172bf0"
+                    alt="Einstein IQ Game Theme" class="user-einstein-image"
+                    onerror="this.onerror=null; this.src='https://placehold.co/400x200/1a1a2e/00ffff?text=Einstein+IQ&font=orbitron';">
+                <h1>Einstein IQ Challenge</h1>
+                <p class="text-lg mb-6">A challenging quiz filled with math and science questions designed to test your
+                    "Einstein IQ".</p>
+                <button id="play-game-btn" class="btn">Play Game</button>
+            </div>
+
+            <div id="quiz-screen" class="screen hidden">
+                <div class="timer-container" id="timer">00:30</div>
+                <div class="progress-bar-container">
+                    <div class="progress-bar" id="progress-bar"></div>
+                </div>
+                <div id="question-number" class="mb-2 text-sm text-gray-400">Question 1/10</div>
+                <div class="question-container">
+                    <h2 id="question-text">Question will appear here...</h2>
+                </div>
+                <div id="options-grid" class="options-grid">
+                </div>
+                <div id="feedback-message" class="feedback-message"></div>
+                <button id="next-question-btn" class="btn hidden">Next Question</button>
+            </div>
+
+            <div id="end-screen" class="screen hidden">
+                <h1>Quiz Completed!</h1>
+                <div class="score-container">
+                    <p>Your "Einstein IQ" Score:</p>
+                    <p id="final-score" class="text-3xl font-bold text-yellow-400 my-4">0 / 0</p>
+                    <p id="score-percentage" class="text-xl text-cyan-400 mb-4"></p>
+                    <p id="feedback-text" class="text-lg"></p>
+                </div>
+                <button id="play-again-btn" class="btn">Play Again</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const startScreen = document.getElementById('start-screen');
+        const quizScreen = document.getElementById('quiz-screen');
+        const endScreen = document.getElementById('end-screen');
+
+        const playGameBtn = document.getElementById('play-game-btn');
+        const nextQuestionBtn = document.getElementById('next-question-btn');
+        const playAgainBtn = document.getElementById('play-again-btn');
+
+        const questionTextEl = document.getElementById('question-text');
+        const optionsGridEl = document.getElementById('options-grid');
+        const timerEl = document.getElementById('timer');
+        const finalScoreEl = document.getElementById('final-score');
+        const scorePercentageEl = document.getElementById('score-percentage');
+        const feedbackTextEl = document.getElementById('feedback-text');
+        const progressBarEl = document.getElementById('progress-bar');
+        const questionNumberEl = document.getElementById('question-number');
+        const feedbackMessageEl = document.getElementById('feedback-message');
+
+
+        // Quiz Questions (Math & Science)
+        const questions = [
+            {
+                question: "What is the value of $\\pi$ (Pi) to two decimal places?",
+                options: ["3.12", "3.14", "3.16", "3.18"],
+                answer: "3.14",
+                explanation: "Pi ($\\pi$) is a mathematical constant, approximately equal to 3.14159. To two decimal places, it is 3.14."
+            },
+            {
+                question: "What is the chemical symbol for Water?",
+                options: ["O2", "H2O", "CO2", "NaCl"],
+                answer: "H2O",
+                explanation: "H2O represents two hydrogen atoms and one oxygen atom, which is the chemical composition of water."
+            },
+            {
+                question: "Solve for x: $2x + 5 = 15$",
+                options: ["x = 5", "x = 10", "x = 7.5", "x = 2.5"],
+                answer: "x = 5",
+                explanation: "$2x + 5 = 15 \\Rightarrow 2x = 10 \\Rightarrow x = 5$."
+            },
+            {
+                question: "What is the powerhouse of the cell?",
+                options: ["Nucleus", "Ribosome", "Mitochondria", "Golgi Apparatus"],
+                answer: "Mitochondria",
+                explanation: "Mitochondria are responsible for generating most of the cell's supply of adenosine triphosphate (ATP), used as a source of chemical energy."
+            },
+            {
+                question: "What is $E=mc^2$ famously known as?",
+                options: ["Theory of Light", "Mass-energy equivalence", "Law of Gravitation", "Quantum Theory"],
+                answer: "Mass-energy equivalence",
+                explanation: "This equation, formulated by Albert Einstein, states that mass and energy are equivalent and can be converted into one another."
+            },
+            {
+                question: "What is the largest planet in our Solar System?",
+                options: ["Earth", "Mars", "Jupiter", "Saturn"],
+                answer: "Jupiter",
+                explanation: "Jupiter is the largest planet, more than twice as massive as all the other planets combined."
+            },
+            {
+                question: "If a triangle has angles 90°, 45°, what is the third angle?",
+                options: ["30°", "45°", "60°", "90°"],
+                answer: "45°",
+                explanation: "The sum of angles in a triangle is always 180°. So, $180 - 90 - 45 = 45°$."
+            },
+            {
+                question: "What force keeps planets in orbit around the Sun?",
+                options: ["Magnetic Force", "Frictional Force", "Gravitational Force", "Nuclear Force"],
+                answer: "Gravitational Force",
+                explanation: "Gravity is the force of attraction between any two objects with mass. The Sun's gravity keeps the planets in their orbits."
+            },
+            {
+                question: "What is the square root of 144?",
+                options: ["10", "12", "14", "16"],
+                answer: "12",
+                explanation: "$12 \\times 12 = 144$, so the square root of 144 is 12."
+            },
+            {
+                question: "Which element has the atomic number 1?",
+                options: ["Helium", "Oxygen", "Hydrogen", "Carbon"],
+                answer: "Hydrogen",
+                explanation: "Hydrogen (H) is the first element on the periodic table and has an atomic number of 1."
+            }
+        ];
+
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let timerInterval;
+        let timeLeft = 30; // seconds per question
+
+        // --- Event Listeners ---
+        playGameBtn.addEventListener('click', startGame);
+        nextQuestionBtn.addEventListener('click', () => {
+            currentQuestionIndex++;
+            if (currentQuestionIndex < questions.length) {
+                loadQuestion();
+                nextQuestionBtn.classList.add('hidden');
+                feedbackMessageEl.textContent = ''; // Clear previous feedback
+                feedbackMessageEl.className = 'feedback-message'; // Reset class
+            } else {
+                endGame();
+            }
+        });
+        playAgainBtn.addEventListener('click', () => {
+            resetGame();
+            startGame();
+        });
+
+        // --- Game Logic Functions ---
+
+        function startGame() {
+            // Shuffle questions for variety each time
+            shuffleArray(questions);
+            currentQuestionIndex = 0;
+            score = 0;
+            showScreen(quizScreen);
+            hideScreen(startScreen);
+            hideScreen(endScreen);
+            loadQuestion();
+        }
+
+        function loadQuestion() {
+            if (currentQuestionIndex >= questions.length) {
+                endGame();
+                return;
+            }
+
+            const currentQuestion = questions[currentQuestionIndex];
+            questionTextEl.innerHTML = currentQuestion.question; // Use innerHTML for LaTeX
+            optionsGridEl.innerHTML = ''; // Clear previous options
+
+            // Update question number
+            questionNumberEl.textContent = `Question ${currentQuestionIndex + 1}/${questions.length}`;
+
+            // Update progress bar
+            const progressPercentage = ((currentQuestionIndex + 1) / questions.length) * 100;
+            progressBarEl.style.width = `${progressPercentage}%`;
+
+
+            currentQuestion.options.forEach(option => {
+                const button = document.createElement('button');
+                button.classList.add('option-btn');
+                button.innerHTML = option; // Use innerHTML for potential LaTeX in options
+                button.addEventListener('click', () => selectAnswer(button, option, currentQuestion.answer, currentQuestion.explanation));
+                optionsGridEl.appendChild(button);
+            });
+
+            resetTimer();
+            startTimer();
+            renderMathInElement(quizScreen); // Render LaTeX for the current question
+        }
+
+        function selectAnswer(buttonEl, selectedOption, correctAnswer, explanation) {
+            clearInterval(timerInterval); // Stop timer on answer selection
+            disableOptions();
+
+            let isCorrect = selectedOption === correctAnswer;
+
+            if (isCorrect) {
+                score++;
+                buttonEl.classList.add('correct');
+                feedbackMessageEl.textContent = "Correct! " + explanation;
+                feedbackMessageEl.className = 'feedback-message correct';
+            } else {
+                buttonEl.classList.add('incorrect');
+                feedbackMessageEl.textContent = "Incorrect. The correct answer was " + correctAnswer + ". " + explanation;
+                feedbackMessageEl.className = 'feedback-message incorrect';
+                // Highlight the correct answer
+                Array.from(optionsGridEl.children).forEach(btn => {
+                    if (btn.textContent === correctAnswer) {
+                        btn.classList.add('correct');
+                    }
+                });
+            }
+
+            nextQuestionBtn.classList.remove('hidden');
+            renderMathInElement(feedbackMessageEl); // Render LaTeX in feedback
+        }
+
+        function disableOptions() {
+            Array.from(optionsGridEl.children).forEach(button => {
+                button.disabled = true;
+                // Remove hover effects by temporarily changing class, or rely on :disabled pseudo-class in CSS if defined
+            });
+        }
+
+        function startTimer() {
+            timeLeft = 30;
+            timerEl.textContent = formatTime(timeLeft);
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                timerEl.textContent = formatTime(timeLeft);
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    feedbackMessageEl.textContent = "Time's up! The correct answer was " + questions[currentQuestionIndex].answer + ". " + questions[currentQuestionIndex].explanation;
+                    feedbackMessageEl.className = 'feedback-message incorrect';
+                    renderMathInElement(feedbackMessageEl);
+                    disableOptions();
+                    nextQuestionBtn.classList.remove('hidden');
+                    // Auto-highlight correct answer if time runs out
+                    Array.from(optionsGridEl.children).forEach(btn => {
+                        if (btn.textContent === questions[currentQuestionIndex].answer) {
+                            btn.classList.add('correct'); // Or a different class for 'missed correct'
+                        }
+                    });
+                }
+            }, 1000);
+        }
+
+        function resetTimer() {
+            clearInterval(timerInterval);
+            timeLeft = 30;
+            timerEl.textContent = formatTime(timeLeft);
+        }
+
+        function formatTime(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        }
+
+        function endGame() {
+            clearInterval(timerInterval);
+            showScreen(endScreen);
+            hideScreen(quizScreen);
+
+            const percentage = (score / questions.length) * 100;
+            finalScoreEl.textContent = `${score} / ${questions.length}`;
+            scorePercentageEl.textContent = `Accuracy: ${percentage.toFixed(1)}%`;
+
+            let feedbackMsg = "";
+            if (percentage === 100) {
+                feedbackMsg = "Outstanding! A true Einstein in the making!";
+            } else if (percentage >= 80) {
+                feedbackMsg = "Excellent work! Your IQ is impressively high!";
+            } else if (percentage >= 60) {
+                feedbackMsg = "Great job! You have a strong grasp of these concepts.";
+            } else if (percentage >= 40) {
+                feedbackMsg = "Good effort! Keep learning and you'll improve.";
+            } else {
+                feedbackMsg = "Keep practicing! Every attempt helps you learn.";
+            }
+            feedbackTextEl.textContent = feedbackMsg;
+            renderMathInElement(endScreen); // Render any LaTeX on the end screen if needed
+        }
+
+        function resetGame() {
+            currentQuestionIndex = 0;
+            score = 0;
+            nextQuestionBtn.classList.add('hidden');
+            feedbackMessageEl.textContent = '';
+            feedbackMessageEl.className = 'feedback-message';
+            progressBarEl.style.width = '0%';
+        }
+
+        function showScreen(screenElement) {
+            // First, hide all screens to ensure clean transition
+            [startScreen, quizScreen, endScreen].forEach(s => {
+                if (s !== screenElement) hideScreen(s);
+            });
+
+            // Then show the target screen
+            screenElement.classList.remove('hidden');
+            // Trigger reflow to ensure transition plays
+            void screenElement.offsetWidth;
+            screenElement.style.opacity = '1';
+            screenElement.style.transform = 'scale(1)';
+        }
+
+        function hideScreen(screenElement) {
+            screenElement.style.opacity = '0';
+            screenElement.style.transform = 'scale(0.95)';
+            // Add 'hidden' class after transition to remove from layout and event flow
+            setTimeout(() => {
+                if (screenElement.style.opacity === '0') { // Check if it's still meant to be hidden
+                    screenElement.classList.add('hidden');
+                }
+            }, 500); // Match CSS transition duration
+        }
+
+        /**
+         * Shuffles array in place.
+         * @param {Array} array items An array containing the items.
+         */
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+
+        // --- MathJax Configuration for LaTeX ---
+        // Load MathJax
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js';
+        script.async = true;
+        script.id = 'MathJax-script';
+        document.head.appendChild(script);
+
+        script.onload = () => {
+            // Configure MathJax
+            window.MathJax = {
+                tex: {
+                    inlineMath: [['$', '$'], ['\\(', '\\)']],
+                    displayMath: [['$$', '$$'], ['\\[', '\\]']]
+                },
+                svg: {
+                    fontCache: 'global'
+                }
+            };
+            // Initial render if content is already present that needs it (e.g. start screen if it had math)
+            // renderMathInElement(document.body);
+        };
+
+        // Function to tell MathJax to typeset a specific element
+        function renderMathInElement(element) {
+            if (window.MathJax && window.MathJax.typesetPromise) {
+                window.MathJax.typesetPromise([element]).catch((err) => console.error('MathJax typesetting error:', err));
+            }
+        }
+
+        // Initial setup
+        showScreen(startScreen); // Show start screen initially
+
+    </script>
+</body>
+
+</html>

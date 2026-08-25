@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Match Mania</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <style>
+        /* Custom styles for the game - Reverted Layout */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f9ff;
+            /* Light blue background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 1rem;
+        }
+
+        .game-container {
+            background-color: #3f3f46;
+            /* Dark gray - chalkboard effect */
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            border: 5px solid #a16207;
+            /* Wood-like border */
+            width: 100%;
+            max-width: 700px;
+            position: relative;
+        }
+
+        .game-header {
+            /* No specific styles needed now */
+        }
+
+        .game-board {
+            display: grid;
+            gap: 1rem;
+            perspective: 1000px;
+            margin-bottom: 1.5rem;
+        }
+
+        .card {
+            background-color: #78716c;
+            border-radius: 0.5rem;
+            aspect-ratio: 1 / 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.6s;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .card .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+
+        .card .card-front {
+            background-color: #f5f5f4;
+            color: #1f2937;
+            transform: rotateY(180deg);
+        }
+
+        .card .card-front img {
+            width: 60%;
+            height: 60%;
+            object-fit: contain;
+        }
+
+        .card .card-front span {
+            font-size: 1.1rem;
+            font-weight: 600;
+            text-align: center;
+            padding: 0.25rem;
+        }
+
+        .card .card-back {
+            background-color: #a16207;
+            background-image: repeating-linear-gradient(45deg, #854d0e, #854d0e 10px, #a16207 10px, #a16207 20px);
+            color: white;
+            font-size: 2rem;
+        }
+
+        .card.is-flipped {
+            transform: rotateY(180deg);
+        }
+
+        .card.is-matched {
+            opacity: 0.7;
+            cursor: default;
+            box-shadow: 0 0 0 3px #4ade80;
+        }
+
+        /* Buttons Container */
+        .button-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            /* Align items vertically */
+            gap: 1rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+            /* Allow wrapping */
+        }
+
+        /* General button styling (applied to a and button) */
+        .button-like {
+            display: inline-flex;
+            /* Use inline-flex for icon alignment */
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            /* Space between icon and text */
+            text-decoration: none;
+            /* Remove underline from link */
+            color: white;
+            font-weight: bold;
+            padding: 0.5rem 1.5rem;
+            /* py-2 px-6 equivalent */
+            border-radius: 0.5rem;
+            /* rounded-lg */
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+            /* shadow */
+            transition: background-color 150ms ease-in-out;
+            /* transition duration-150 ease-in-out */
+            cursor: pointer;
+        }
+
+        .button-like img {
+            /* Style for icons inside buttons */
+            width: 18px;
+            height: 18px;
+        }
+
+        /* Style for mute button */
+        #mute-button {
+            background-color: #f59e0b;
+            /* Amber */
+            padding: 0.5rem;
+            /* Make it squarish */
+        }
+
+        #mute-button:hover {
+            background-color: #d97706;
+            /* Darker Amber */
+        }
+
+        #mute-button img {
+            width: 24px;
+            /* Icon size */
+            height: 24px;
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 99;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            background-color: #e7e5e4;
+            padding: 2rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            z-index: 100;
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        .modal-content h2 {
+            color: #3f3f46;
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-content .level-button {
+            display: block;
+            width: 100%;
+            margin-bottom: 0.75rem;
+            padding: 0.75rem 1rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+        }
+
+        .modal-content .level-button:active {
+            transform: scale(0.98);
+        }
+
+        .modal-content .level-button:last-of-type {
+            margin-bottom: 0;
+        }
+
+        .modal-close-button {
+            display: inline-block;
+            margin-top: 1.5rem;
+            padding: 0.5rem 1rem;
+            background-color: #f87171;
+            color: white;
+            border: none;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .modal-close-button:hover {
+            background-color: #ef4444;
+        }
+
+        /* Message Box Styles */
+        #message-box {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #22c55e;
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 101;
+            display: none;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 640px) {
+            .game-container {
+                padding: 1rem;
+            }
+
+            .game-board {
+                gap: 0.5rem;
+            }
+
+            .card .card-front span {
+                font-size: 0.9rem;
+            }
+
+            .card .card-front img {
+                width: 50%;
+                height: 50%;
+            }
+
+            .button-container {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .button-container .button-like,
+            .button-container button {
+                width: 80%;
+                margin-bottom: 0.5rem;
+                /* Add margin for stacked buttons */
+            }
+
+            .button-container .button-like:last-child,
+            .button-container button:last-child {
+                margin-bottom: 0;
+            }
+
+            #mute-button {
+                width: auto;
+                padding: 0.4rem;
+            }
+
+            #mute-button img {
+                width: 20px;
+                height: 20px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="game-container">
+        <div class="game-header">
+            <h1 class="text-3xl font-bold text-center text-white mb-4">Match Mania</h1>
+            <p id="moves" class="text-lg text-center text-gray-200 mb-2">Moves: 0</p>
+            <p id="level-display" class="text-md text-center text-gray-300 mb-4">Level: Easy (4x3)</p>
+        </div>
+        <div id="game-board" class="game-board">
+        </div>
+        <div class="button-container">
+            <a href="../../index.html" class="button-like bg-gray-500 hover:bg-gray-700">
+                <img src="https://cdn.jsdelivr.net/npm/lucide-static@latest/icons/home.svg" alt="Home icon">
+                <span>Home</span>
+            </a>
+            <button id="level-button" class="button-like bg-green-500 hover:bg-green-700">
+                Select Level
+            </button>
+            <button id="reset-button" class="button-like bg-blue-500 hover:bg-blue-700">
+                Reset Game
+            </button>
+            <button id="mute-button"
+                class="text-white font-bold rounded-lg shadow transition duration-150 ease-in-out flex items-center justify-center">
+                <img id="mute-icon" src="https://cdn.jsdelivr.net/npm/lucide-static@latest/icons/volume-2.svg"
+                    alt="Unmuted">
+            </button>
+        </div>
+    </div>
+
+    <div id="level-modal-overlay" class="modal-overlay">
+        <div class="modal-content">
+            <h2>Select Level</h2>
+            <button class="level-button bg-sky-500 hover:bg-sky-600 text-white" data-level="easy">Easy (4x3 - 6
+                pairs)</button>
+            <button class="level-button bg-amber-500 hover:bg-amber-600 text-white" data-level="medium">Medium (4x4 - 8
+                pairs)</button>
+            <button class="level-button bg-rose-500 hover:bg-rose-600 text-white" data-level="hard">Hard (5x4 - 10
+                pairs)</button>
+            <button id="modal-close-button" class="modal-close-button">Close</button>
+        </div>
+    </div>
+
+    <div id="message-box">You Win!</div>
+
+    <script>
+        // --- Game Elements ---
+        const gameBoard = document.getElementById('game-board');
+        const movesCounter = document.getElementById('moves');
+        const levelDisplay = document.getElementById('level-display');
+        const resetButton = document.getElementById('reset-button');
+        const levelButton = document.getElementById('level-button');
+        const messageBox = document.getElementById('message-box');
+        const levelModalOverlay = document.getElementById('level-modal-overlay');
+        const modalCloseButton = document.getElementById('modal-close-button');
+        const levelSelectionButtons = document.querySelectorAll('.level-button');
+        const muteButton = document.getElementById('mute-button');
+        const muteIcon = document.getElementById('mute-icon');
+
+        // --- Game Data ---
+        const allPairs = [
+            { type: 'word', content: 'Dog', id: 1 }, { type: 'icon', content: 'https://cdn.jsdelivr.net/npm/lucide-static@latest/icons/dog.svg', id: 1 },
+            { type: 'word', content: 'Cat', id: 2 }, { type: 'icon', content: 'https://cdn.jsdelivr.net/npm/lucide-static@latest/icons/cat.svg', id: 2 },
+            { type: 'word', content: 'Sun', id: 3 }, { type: 'icon', content: 'https://cdn.jsdelivr.net/npm/lucide-static@latest/icons/sun.svg', id: 3 },
+            { type: 'word', content: 'Tree', id: 4 }, { type: 'icon', content: 'https://cdn.jsdelivr.net/npm/lucide-static@latest/icons/tree-pine.svg', id: 4 },
+            { type: 'word', content: 'Car', id: 5 }, { type: 'icon', content: 'https://cdn.jsdelivr.net/npm/lucide-static@latest/icons/car.svg', id: 5 },
+            { type: 'word', content: 'Star', id: 6 }, { type: 'icon', content: 'https://cdn.jsdelivr.net/npm/lucide-static@latest/icons/star.svg', id: 6 },
+            { type: 'word', content: 'Moon', id: 7 }, { type: 'icon', content: 'https://cdn.jsdelivr.net/npm/lucide-static@latest/icons/moon.svg', id: 7 },
+            { type: 'word', content: 'Cloud', id: 8 }, { type: 'icon', content: 'https://cdn.jsdelivr.net/npm/lucide-static@latest/icons/cloud.svg', id: 8 },
+            { type: 'word', content: 'Home', id: 9 }, { type: 'icon', content: 'https://cdn.jsdelivr.net/npm/lucide-static@latest/icons/home.svg', id: 9 },
+            { type: 'word', content: 'Key', id: 10 }, { type: 'icon', content: 'https://cdn.jsdelivr.net/npm/lucide-static@latest/icons/key.svg', id: 10 },
+        ];
+        const levels = {
+            easy: { pairs: 6, cols: 4, rows: 3, name: "Easy (4x3)" },
+            medium: { pairs: 8, cols: 4, rows: 4, name: "Medium (4x4)" },
+            hard: { pairs: 10, cols: 5, rows: 4, name: "Hard (5x4)" }
+        };
+
+        // --- Game State ---
+        let currentLevelKey = 'easy';
+        let currentPairs = [];
+        let cards = [];
+        let firstCard = null;
+        let secondCard = null;
+        let lockBoard = false;
+        let matchedPairs = 0;
+        let moves = 0;
+        let isMuted = false;
+        let audioStarted = false;
+
+        // --- Audio Setup (Tone.js) ---
+        const flipSound = new Tone.Synth({ oscillator: { type: 'sine' }, envelope: { attack: 0.005, decay: 0.1, sustain: 0, release: 0.1 } }).toDestination();
+        flipSound.volume.value = -10;
+        const matchSound = new Tone.Synth({ oscillator: { type: 'triangle' }, envelope: { attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.2 } }).toDestination();
+        matchSound.volume.value = -8;
+        const winSound = new Tone.Synth({ oscillator: { type: 'pwm', modulationFrequency: 0.2 }, envelope: { attack: 0.05, decay: 0.5, sustain: 0.2, release: 0.5 } }).toDestination();
+        winSound.volume.value = -6;
+        const bgMusicSynth = new Tone.AMSynth({ harmonicity: 1.5, detune: 0, oscillator: { type: "sawtooth" }, envelope: { attack: 0.02, decay: 0.8, sustain: 0.2, release: 1.5 }, modulation: { type: "sine" }, modulationEnvelope: { attack: 0.1, decay: 0.5, sustain: 0.1, release: 1 } }).toDestination();
+        bgMusicSynth.volume.value = -28;
+        const bgMusicLoop = new Tone.Loop(time => {
+            const notes = ["A3", "C4", "D4", "E4"];
+            bgMusicSynth.triggerAttackRelease(notes[0], "4n", time);
+            bgMusicSynth.triggerAttackRelease(notes[Math.floor(Math.random() * (notes.length - 1)) + 1], "8n", time + Tone.Time("4n").toSeconds());
+        }, "1n");
+
+        // --- Core Functions (Audio Start, Game Logic, Modal, Mute) ---
+        // These functions remain unchanged from the previous version
+        async function startAudio() {
+            if (!audioStarted) {
+                await Tone.start();
+                console.log('Audio context started');
+                audioStarted = true;
+                if (!isMuted) {
+                    Tone.Transport.start();
+                    bgMusicLoop.start(0);
+                }
+            }
+        }
+        function shuffle(array) {
+            const shuffledArray = [...array];
+            for (let i = shuffledArray.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffledArray[i], shuffledArray[j]] = [shuffledArray[j], shuffledArray[i]];
+            }
+            return shuffledArray;
+        }
+        function selectPairsForLevel(levelKey) {
+            const levelConfig = levels[levelKey];
+            const requiredPairs = levelConfig.pairs;
+            const uniqueIds = [...new Set(allPairs.map(p => p.id))].slice(0, requiredPairs);
+            currentPairs = allPairs.filter(p => uniqueIds.includes(p.id));
+        }
+        function createCardElement(item) {
+            const card = document.createElement('div');
+            card.classList.add('card');
+            card.dataset.id = item.id;
+            const cardFront = document.createElement('div');
+            cardFront.classList.add('card-face', 'card-front');
+            if (item.type === 'word') {
+                const wordSpan = document.createElement('span');
+                wordSpan.textContent = item.content;
+                cardFront.appendChild(wordSpan);
+            } else {
+                const iconImg = document.createElement('img');
+                iconImg.src = item.content;
+                iconImg.alt = "icon";
+                iconImg.loading = "lazy";
+                iconImg.onerror = function () {
+                    cardFront.innerHTML = '<span>?</span>';
+                    console.error(`Failed to load image: ${iconImg.src}`);
+                }
+                cardFront.appendChild(iconImg);
+            }
+            const cardBack = document.createElement('div');
+            cardBack.classList.add('card-face', 'card-back');
+            card.appendChild(cardFront);
+            card.appendChild(cardBack);
+            card.addEventListener('click', handleCardClick);
+            return card;
+        }
+        function initializeGame() {
+            firstCard = null;
+            secondCard = null;
+            lockBoard = false;
+            matchedPairs = 0;
+            moves = 0;
+            updateMoves();
+            updateLevelDisplay();
+            hideMessage();
+            gameBoard.innerHTML = '';
+            selectPairsForLevel(currentLevelKey);
+            const shuffledLevelPairs = shuffle(currentPairs);
+            const levelConfig = levels[currentLevelKey];
+            gameBoard.style.gridTemplateColumns = `repeat(${levelConfig.cols}, 1fr)`;
+            shuffledLevelPairs.forEach(item => {
+                const cardElement = createCardElement(item);
+                gameBoard.appendChild(cardElement);
+            });
+            cards = document.querySelectorAll('.card');
+            if (audioStarted && !isMuted) {
+                bgMusicLoop.stop();
+                Tone.Transport.stop();
+                Tone.Transport.start();
+                bgMusicLoop.start(0);
+            }
+        }
+        async function handleCardClick() {
+            if (!audioStarted) {
+                await startAudio();
+            }
+            if (lockBoard || this === firstCard || this.classList.contains('is-matched')) {
+                return;
+            }
+            if (audioStarted) {
+                flipSound.triggerAttackRelease('C5', '16n');
+            }
+            this.classList.add('is-flipped');
+            if (!firstCard) {
+                firstCard = this;
+                return;
+            }
+            secondCard = this;
+            lockBoard = true;
+            moves++;
+            updateMoves();
+            checkForMatch();
+        }
+        function checkForMatch() {
+            const isMatch = firstCard.dataset.id === secondCard.dataset.id;
+            isMatch ? disableCards() : unflipCards();
+        }
+        function disableCards() {
+            firstCard.removeEventListener('click', handleCardClick);
+            secondCard.removeEventListener('click', handleCardClick);
+            firstCard.classList.add('is-matched');
+            secondCard.classList.add('is-matched');
+            if (audioStarted) {
+                matchSound.triggerAttackRelease('E5', '8n', Tone.now());
+                matchSound.triggerAttackRelease('G5', '8n', Tone.now() + 0.1);
+            }
+            matchedPairs++;
+            resetBoardState();
+            if (matchedPairs === currentPairs.length / 2) {
+                showWinMessage();
+            }
+        }
+        function unflipCards() {
+            setTimeout(() => {
+                if (firstCard) firstCard.classList.remove('is-flipped');
+                if (secondCard) secondCard.classList.remove('is-flipped');
+                resetBoardState();
+            }, 1000);
+        }
+        function resetBoardState() {
+            [firstCard, secondCard] = [null, null];
+            lockBoard = false;
+        }
+        function updateMoves() { movesCounter.textContent = `Moves: ${moves}`; }
+        function updateLevelDisplay() { levelDisplay.textContent = `Level: ${levels[currentLevelKey].name}`; }
+        function showWinMessage() {
+            messageBox.textContent = `You Win in ${moves} moves!`;
+            messageBox.style.display = 'block';
+            if (audioStarted) {
+                winSound.triggerAttackRelease('C5', '4n', Tone.now());
+                winSound.triggerAttackRelease('E5', '4n', Tone.now() + 0.2);
+                winSound.triggerAttackRelease('G5', '4n', Tone.now() + 0.4);
+                winSound.triggerAttackRelease('C6', '2n', Tone.now() + 0.6);
+            }
+            setTimeout(hideMessage, 4000);
+        }
+        function hideMessage() { messageBox.style.display = 'none'; }
+        function showLevelModal() { levelModalOverlay.classList.add('active'); }
+        function hideLevelModal() { levelModalOverlay.classList.remove('active'); }
+        function toggleMute() {
+            isMuted = !isMuted;
+            if (isMuted) {
+                bgMusicLoop.stop();
+                Tone.Transport.stop();
+                muteIcon.src = 'https://cdn.jsdelivr.net/npm/lucide-static@latest/icons/volume-x.svg';
+                muteIcon.alt = 'Muted';
+            } else {
+                if (audioStarted) {
+                    Tone.Transport.start();
+                    bgMusicLoop.start(0);
+                }
+                muteIcon.src = 'https://cdn.jsdelivr.net/npm/lucide-static@latest/icons/volume-2.svg';
+                muteIcon.alt = 'Unmuted';
+            }
+        }
+
+        // --- Event Listeners ---
+        // No changes needed here, the new link works without JS
+        resetButton.addEventListener('click', initializeGame);
+        levelButton.addEventListener('click', showLevelModal);
+        modalCloseButton.addEventListener('click', hideLevelModal);
+        levelModalOverlay.addEventListener('click', (event) => {
+            if (event.target === levelModalOverlay) hideLevelModal();
+        });
+        levelSelectionButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                currentLevelKey = button.dataset.level;
+                hideLevelModal();
+                initializeGame();
+            });
+        });
+        muteButton.addEventListener('click', toggleMute);
+
+        // --- Initial Game Load ---
+        document.addEventListener('DOMContentLoaded', initializeGame);
+
+    </script>
+</body>
+
+</html>

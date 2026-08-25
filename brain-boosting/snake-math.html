@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Math Snake Challenge</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #2c3e50;
+            /* Dark blue background */
+            margin: 0;
+            font-family: 'Press Start 2P', cursive;
+            color: #ecf0f1;
+            /* Light text color */
+            overflow: hidden;
+            /* Prevent scrollbars */
+        }
+
+        .game-container {
+            position: relative;
+            /* Needed for absolute positioning of message box */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #34495e;
+            /* Slightly lighter blue */
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+            border: 5px solid #ecf0f1;
+            /* Adjusted width for smaller screens */
+            width: 540px;
+            /* New fixed width (500px canvas + padding/border) */
+        }
+
+        h1 {
+            color: #f1c40f;
+            /* Yellow title */
+            margin-bottom: 10px;
+            font-size: 1.5em;
+            /* Slightly smaller title */
+            text-shadow: 2px 2px #e74c3c;
+            /* Red shadow */
+        }
+
+        .info-bar {
+            display: flex;
+            justify-content: space-between;
+            /* Adjusted width to match new canvas width */
+            width: 500px;
+            margin-bottom: 15px;
+            font-size: 0.8em;
+            /* Slightly smaller font */
+            padding: 0 5px;
+            /* Reduced padding */
+            min-height: 28px;
+            /* Ensure height */
+            align-items: center;
+            visibility: hidden;
+        }
+
+        .info-bar span {
+            background-color: #2c3e50;
+            padding: 4px 8px;
+            /* Slightly smaller padding */
+            border-radius: 5px;
+            box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.3);
+        }
+
+        #timer-display {
+            color: #f1c40f;
+            font-weight: bold;
+        }
+
+
+        #problem-display {
+            font-size: 1.3em;
+            /* Slightly smaller font */
+            color: #3498db;
+            margin-bottom: 15px;
+            background-color: #ecf0f1;
+            color: #2c3e50;
+            padding: 8px 12px;
+            /* Reduced padding */
+            border-radius: 8px;
+            min-height: 1.3em;
+            text-align: center;
+            /* Adjusted width */
+            width: 470px;
+            /* Slightly less than info bar */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            visibility: hidden;
+        }
+
+        canvas {
+            background-color: #95a5a6;
+            display: block;
+            border: 5px solid #7f8c8d;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            /* Adjusted dimensions: width=500, height=400 */
+        }
+
+        .controls-info {
+            margin-top: 15px;
+            font-size: 0.7em;
+            /* Slightly smaller */
+            color: #bdc3c7;
+            visibility: hidden;
+        }
+
+        /* Message Box Styling (for Menu and Game Over) */
+        #message-box {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 85%;
+            /* Adjusted width relative to smaller container */
+            background-color: rgba(44, 62, 80, 0.97);
+            color: #ecf0f1;
+            padding: 25px 35px;
+            /* Slightly reduced padding */
+            border-radius: 15px;
+            border: 3px solid #f1c40f;
+            text-align: center;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+        }
+
+        #message-box h2 {
+            margin-top: 0;
+            color: #f1c40f;
+            font-size: 1.3em;
+            /* Adjusted font size */
+            margin-bottom: 15px;
+        }
+
+        #message-box p {
+            font-size: 0.9em;
+            /* Adjusted font size */
+            margin-bottom: 20px;
+            /* Reduced margin */
+        }
+
+        .button-group {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            /* Reduced gap */
+        }
+
+        .game-button {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 0.8em;
+            /* Adjusted font size */
+            padding: 10px 18px;
+            /* Adjusted padding */
+            background: linear-gradient(145deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px #1a5276;
+            text-shadow: 1px 1px #1a5276;
+            margin: 4px;
+            /* Reduced margin */
+        }
+
+        .game-button:hover {
+            background: linear-gradient(145deg, #4ca9e3, #3a9cd6);
+            box-shadow: 0 2px #1a5276;
+            transform: translateY(2px);
+        }
+
+        .game-button:active {
+            box-shadow: 0 0px #1a5276;
+            transform: translateY(4px);
+        }
+
+        /* Specific button colors (remain the same) */
+        .button-story {
+            background: linear-gradient(145deg, #2ecc71, #27ae60);
+            box-shadow: 0 4px #1f8b4c;
+            text-shadow: 1px 1px #1f8b4c;
+        }
+
+        .button-story:hover {
+            background: linear-gradient(145deg, #58d68d, #48c9b0);
+            box-shadow: 0 2px #1f8b4c;
+        }
+
+        .button-story:active {
+            box-shadow: 0 0px #1f8b4c;
+        }
+
+        .button-endless {
+            background: linear-gradient(145deg, #9b59b6, #8e44ad);
+            box-shadow: 0 4px #6c3483;
+            text-shadow: 1px 1px #6c3483;
+        }
+
+        .button-endless:hover {
+            background: linear-gradient(145deg, #af7ac5, #a569bd);
+            box-shadow: 0 2px #6c3483;
+        }
+
+        .button-endless:active {
+            box-shadow: 0 0px #6c3483;
+        }
+
+        .button-challenge {
+            background: linear-gradient(145deg, #e67e22, #d35400);
+            box-shadow: 0 4px #a04000;
+            text-shadow: 1px 1px #a04000;
+        }
+
+        .button-challenge:hover {
+            background: linear-gradient(145deg, #eb984e, #e59866);
+            box-shadow: 0 2px #a04000;
+        }
+
+        .button-challenge:active {
+            box-shadow: 0 0px #a04000;
+        }
+
+        .button-restart {
+            background: linear-gradient(145deg, #e74c3c, #c0392b);
+            box-shadow: 0 4px #922b21;
+            text-shadow: 1px 1px #922b21;
+        }
+
+        .button-restart:hover {
+            background: linear-gradient(145deg, #ec7063, #d35400);
+            box-shadow: 0 2px #922b21;
+        }
+
+        .button-restart:active {
+            box-shadow: 0 0px #922b21;
+        }
+
+        .button-menu {
+            background: linear-gradient(145deg, #f39c12, #f1c40f);
+            box-shadow: 0 4px #b7791f;
+            text-shadow: 1px 1px #b7791f;
+            color: #2c3e50;
+        }
+
+        .button-menu:hover {
+            background: linear-gradient(145deg, #f5b041, #f4d03f);
+            box-shadow: 0 2px #b7791f;
+        }
+
+        .button-menu:active {
+            box-shadow: 0 0px #b7791f;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="game-container">
+        <h1>Math Snake</h1>
+        <div class="info-bar" id="info-bar">
+            <span id="score">Score: 0</span>
+            <span id="level">Level: 1</span>
+            <span id="timer-display" style="display: none;">Time: 2:00</span>
+            <span id="lives">Lives: 3 ❤️</span>
+        </div>
+
+        <div id="problem-display">Select a mode!</div>
+
+        <canvas id="gameCanvas" width="500" height="400"></canvas>
+
+        <div class="controls-info" id="controls-info">Use Arrow Keys to Move</div>
+
+        <div id="message-box">
+            <h2 id="message-title">Main Menu</h2>
+            <p id="message-text">Select a game mode to start!</p>
+            <div class="button-group">
+                <button id="story-button" class="game-button button-story">Story Mode</button>
+                <button id="endless-button" class="game-button button-endless">Endless Mode</button>
+                <button id="challenge-button" class="game-button button-challenge">Challenge Mode</button>
+                <button id="restart-button" class="game-button button-restart" style="display: none;">Restart</button>
+                <button id="menu-button" class="game-button button-menu" style="display: none;">Back to Menu</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- Game Constants and Variables ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const box = 20; // Size of each grid unit remains 20px
+        // Canvas dimensions are now read directly from the canvas element's attributes
+        const canvasSize = { width: canvas.width, height: canvas.height };
+        // Grid dimensions recalculated based on new canvas size
+        const gridWidth = canvasSize.width / box; // 500 / 20 = 25
+        const gridHeight = canvasSize.height / box; // 400 / 20 = 20
+
+        // UI Elements (References remain the same)
+        const infoBar = document.getElementById('info-bar');
+        const scoreDisplay = document.getElementById('score');
+        const levelDisplay = document.getElementById('level');
+        const livesDisplay = document.getElementById('lives');
+        const timerDisplay = document.getElementById('timer-display');
+        const problemDisplay = document.getElementById('problem-display');
+        const controlsInfo = document.getElementById('controls-info');
+        const messageBox = document.getElementById('message-box');
+        const messageTitle = document.getElementById('message-title');
+        const messageText = document.getElementById('message-text');
+        const storyButton = document.getElementById('story-button');
+        const endlessButton = document.getElementById('endless-button');
+        const challengeButton = document.getElementById('challenge-button');
+        const restartButton = document.getElementById('restart-button');
+        const menuButton = document.getElementById('menu-button');
+
+        // Game State Variables (remain the same)
+        let snake;
+        let food = [];
+        let score;
+        let lives;
+        let level;
+        let currentProblem = { text: "", answer: null };
+        let direction;
+        let changingDirection;
+        let gameLoopInterval;
+        let gameSpeed;
+        let isGameOver;
+        let isPaused;
+        let powerUps = [];
+        let freezeTimer = 0;
+        let challengeTimerInterval;
+        let challengeTimeLeft;
+        let currentGameMode = 'menu';
+
+        // Sound Synthesis Variables (remain the same)
+        let synth;
+        let moveSound, eatCorrectSound, eatWrongSound, levelUpSound, gameOverSound, powerUpSpawnSound, powerUpCollectSound;
+
+        // --- Functions (Most remain unchanged, only gridWidth/gridHeight are affected by canvas size change) ---
+
+        function initializeSounds() {
+            if (synth) return;
+            try {
+                synth = new Tone.Synth().toDestination();
+                moveSound = () => synth.triggerAttackRelease("C2", "8n", Tone.now());
+                eatCorrectSound = () => synth.triggerAttackRelease("G4", "8n", Tone.now() + 0.05);
+                eatWrongSound = () => synth.triggerAttackRelease("C3", "4n", Tone.now());
+                levelUpSound = () => {
+                    synth.triggerAttackRelease("C5", "8n", Tone.now());
+                    synth.triggerAttackRelease("E5", "8n", Tone.now() + 0.1);
+                    synth.triggerAttackRelease("G5", "8n", Tone.now() + 0.2);
+                };
+                gameOverSound = () => {
+                    synth.triggerAttackRelease("C3", "4n", Tone.now());
+                    synth.triggerAttackRelease("G2", "4n", Tone.now() + 0.2);
+                    synth.triggerAttackRelease("E2", "2n", Tone.now() + 0.4);
+                };
+                powerUpSpawnSound = () => synth.triggerAttackRelease("A4", "16n", Tone.now());
+                powerUpCollectSound = () => synth.triggerAttackRelease("C6", "8n", Tone.now());
+            } catch (e) {
+                console.error("Could not initialize Tone.js:", e);
+                moveSound = eatCorrectSound = eatWrongSound = levelUpSound = gameOverSound = powerUpSpawnSound = powerUpCollectSound = () => { };
+            }
+        }
+
+        function initGame(mode) {
+            currentGameMode = mode;
+            // Initial snake position uses the recalculated gridWidth/gridHeight
+            snake = [{ x: Math.floor(gridWidth / 2) * box, y: Math.floor(gridHeight / 2) * box }];
+            food = [];
+            powerUps = [];
+            score = 0;
+            lives = (currentGameMode === 'challenge') ? 1 : 3;
+            level = 1;
+            direction = null;
+            changingDirection = false;
+            gameSpeed = 150;
+            isGameOver = false;
+            isPaused = false;
+            freezeTimer = 0;
+
+            clearInterval(gameLoopInterval);
+            gameLoopInterval = null;
+            clearInterval(challengeTimerInterval);
+            challengeTimerInterval = null;
+
+            timerDisplay.style.display = 'none';
+            if (currentGameMode === 'challenge') {
+                challengeTimeLeft = 120;
+                timerDisplay.style.display = 'inline-block';
+                startChallengeTimer();
+                lives = 1;
+            }
+
+            updateUI();
+            generateProblem();
+            generateFood(); // Uses recalculated gridWidth/gridHeight
+
+            messageBox.style.display = 'none';
+            infoBar.style.visibility = 'visible';
+            problemDisplay.style.visibility = 'visible';
+            controlsInfo.style.visibility = 'visible';
+            canvas.style.opacity = '1';
+
+            gameLoopInterval = setInterval(gameLoop, gameSpeed);
+        }
+
+        function startChallengeTimer() {
+            challengeTimerInterval = setInterval(() => {
+                challengeTimeLeft--;
+                updateUI();
+                if (challengeTimeLeft <= 0) {
+                    gameOver("Time's Up!");
+                }
+            }, 1000);
+        }
+
+        function gameLoop() {
+            if (isGameOver || isPaused) return;
+
+            changingDirection = false;
+            moveSnake(); // Uses recalculated gridWidth/gridHeight for bounds checks implicitly via canvasSize
+            drawGame(); // Uses canvasSize
+
+            let currentSpeed = gameSpeed; // Keep original reference
+            let calculatedSpeed = gameSpeed; // Variable for calculation
+            if (freezeTimer > 0) {
+                calculatedSpeed *= 2;
+                freezeTimer--;
+                // No need to reschedule immediately unless freezeTimer hits 0
+                if (freezeTimer === 0) {
+                    rescheduleGameLoop(); // Reschedule with normal speed
+                }
+            } else {
+                calculatedSpeed = Math.max(50, 150 - (level - 1) * 8);
+            }
+
+            // Check if the calculated speed requires rescheduling the interval
+            // This logic is tricky with setInterval IDs, let's simplify:
+            // Always reschedule if the calculated speed differs from the *last used* speed
+            // We need a variable to store the last used speed
+            if (typeof lastScheduledSpeed === 'undefined' || calculatedSpeed !== lastScheduledSpeed) {
+                rescheduleGameLoop(calculatedSpeed);
+            }
+        }
+
+        let lastScheduledSpeed; // Store the speed used for the current interval
+
+        function rescheduleGameLoop(speed) {
+            // If speed is not provided, calculate it based on current state (level, freeze)
+            if (speed === undefined) {
+                if (freezeTimer > 0) {
+                    speed = Math.max(50, 150 - (level - 1) * 8) * 2; // Calculate frozen speed
+                } else {
+                    speed = Math.max(50, 150 - (level - 1) * 8); // Calculate normal speed
+                }
+            }
+
+            clearInterval(gameLoopInterval);
+            gameLoopInterval = setInterval(gameLoop, speed);
+            lastScheduledSpeed = speed; // Update the last used speed
+        }
+
+
+        function moveSnake() {
+            if (!direction || isGameOver) return;
+
+            let head = { x: snake[0].x, y: snake[0].y };
+            if (direction === "LEFT") head.x -= box;
+            if (direction === "UP") head.y -= box;
+            if (direction === "RIGHT") head.x += box;
+            if (direction === "DOWN") head.y += box;
+
+            // Wall collision check uses canvasSize.width/height which are updated
+            if (head.x < 0 || head.x >= canvasSize.width || head.y < 0 || head.y >= canvasSize.height) {
+                if (currentGameMode === 'challenge') gameOver("Wall Collision!"); else loseLife();
+                return;
+            }
+            // Self collision
+            for (let i = 1; i < snake.length; i++) {
+                if (head.x === snake[i].x && head.y === snake[i].y) {
+                    if (currentGameMode === 'challenge') gameOver("Self Collision!"); else loseLife();
+                    return;
+                }
+            }
+
+            snake.unshift(head);
+
+            // Food Collision
+            let ateFood = false;
+            let ateCorrect = false;
+            for (let i = food.length - 1; i >= 0; i--) {
+                if (head.x === food[i].x && head.y === food[i].y) {
+                    ateFood = true;
+                    if (food[i].isCorrect) {
+                        score += 10 * level;
+                        ateCorrect = true;
+                        if (synth) eatCorrectSound();
+                        generateProblem();
+                        if (snake.length % 5 === 0) {
+                            levelUp(); // This will trigger rescheduleGameLoop via level change
+                        }
+                    } else {
+                        if (synth) eatWrongSound();
+                        if (currentGameMode === 'challenge') gameOver("Wrong Answer!"); else loseLife();
+                    }
+                    food = [];
+                    powerUps = [];
+                    if (!isGameOver) {
+                        generateFood();
+                        maybeSpawnPowerUp();
+                    }
+                    break;
+                }
+            }
+
+            // Power-up Collision
+            for (let i = powerUps.length - 1; i >= 0; i--) {
+                if (head.x === powerUps[i].x && head.y === powerUps[i].y) {
+                    collectPowerUp(powerUps[i].type); // collectPowerUp handles reschedule if freeze
+                    powerUps.splice(i, 1);
+                    break;
+                }
+            }
+
+            if (!ateCorrect && !isGameOver) {
+                snake.pop();
+            }
+
+            updateUI();
+        }
+
+        function changeDirection(event) {
+            if (changingDirection || isGameOver || currentGameMode === 'menu') return; // Added menu check
+
+            const keyPressed = event.key;
+            const goingUp = direction === "UP";
+            const goingDown = direction === "DOWN";
+            const goingLeft = direction === "LEFT";
+            const goingRight = direction === "RIGHT";
+
+            let newDirection = null;
+            if (keyPressed === "ArrowLeft" && !goingRight) newDirection = "LEFT";
+            else if (keyPressed === "ArrowUp" && !goingDown) newDirection = "UP";
+            else if (keyPressed === "ArrowRight" && !goingLeft) newDirection = "RIGHT";
+            else if (keyPressed === "ArrowDown" && !goingUp) newDirection = "DOWN";
+
+            if (newDirection) {
+                // Play sound only if direction actually changes or starts
+                if (synth && (!direction || newDirection !== direction)) {
+                    moveSound();
+                }
+                direction = newDirection;
+                changingDirection = true;
+            }
+        }
+
+        function generateProblem() {
+            let num1, num2, operator, answer;
+            const difficultyTier = Math.ceil(level / 2);
+
+            if (difficultyTier <= 1) {
+                if (Math.random() < 0.6 || level === 1) {
+                    num1 = Math.floor(Math.random() * (level * 5 + 5)) + 1;
+                    num2 = Math.floor(Math.random() * (level * 5 + 5)) + 1;
+                    operator = "+"; answer = num1 + num2;
+                } else {
+                    num1 = Math.floor(Math.random() * (level * 5 + 10)) + 1;
+                    num2 = Math.floor(Math.random() * (num1 - 1)) + 1;
+                    operator = "-"; answer = num1 - num2;
+                }
+            } else if (difficultyTier === 2) {
+                const type = Math.random();
+                if (type < 0.4) {
+                    num1 = Math.floor(Math.random() * 50) + 10; num2 = Math.floor(Math.random() * 50) + 10;
+                    operator = "+"; answer = num1 + num2;
+                } else if (type < 0.7) {
+                    num1 = Math.floor(Math.random() * 80) + 20; num2 = Math.floor(Math.random() * (num1 - 10)) + 10;
+                    operator = "-"; answer = num1 - num2;
+                } else {
+                    num1 = Math.floor(Math.random() * 7) + 2; num2 = Math.floor(Math.random() * 7) + 2;
+                    operator = "×"; answer = num1 * num2;
+                }
+            } else {
+                const type = Math.random();
+                if (type < 0.6 || difficultyTier < 4) {
+                    num1 = Math.floor(Math.random() * (level + 5)) + 3; num2 = Math.floor(Math.random() * 10) + 2;
+                    operator = "×"; answer = num1 * num2;
+                } else {
+                    answer = Math.floor(Math.random() * (level + 3)) + 2; num2 = Math.floor(Math.random() * 8) + 3;
+                    num1 = answer * num2; operator = "÷";
+                }
+            }
+            currentProblem = { text: `${num1} ${operator} ${num2} = ?`, answer: answer };
+            problemDisplay.textContent = currentProblem.text;
+        }
+
+        function generateFood() {
+            food = [];
+            const correctAnswerValue = currentProblem.answer;
+            let foodPositions = new Set();
+
+            // Uses updated gridWidth/gridHeight implicitly
+            function getRandomPosition() {
+                let newPos;
+                let attempts = 0;
+                do {
+                    newPos = {
+                        x: Math.floor(Math.random() * gridWidth) * box,
+                        y: Math.floor(Math.random() * gridHeight) * box
+                    };
+                    attempts++;
+                } while ((isOccupied(newPos.x, newPos.y) || foodPositions.has(`${newPos.x},${newPos.y}`)) && attempts < 100);
+                if (attempts >= 100) return null;
+                foodPositions.add(`${newPos.x},${newPos.y}`);
+                return newPos;
+            }
+
+            let correctPos = getRandomPosition();
+            if (correctPos) {
+                food.push({ ...correctPos, value: correctAnswerValue, isCorrect: true });
+            } else { console.error("Failed to place correct food!"); gameOver("Error"); return; }
+
+            const numDistractors = Math.min(level + 1, 4);
+            let distractors = new Set([correctAnswerValue]);
+
+            while (food.length < numDistractors + 1) {
+                let distractorValue;
+                let attempts = 0;
+                do {
+                    const offset = Math.floor(Math.random() * 10) - 5 + (Math.random() < 0.5 ? level : -level);
+                    distractorValue = correctAnswerValue + offset;
+                } while ((distractorValue <= 0 || distractors.has(distractorValue)) && attempts++ < 50);
+
+                if (attempts >= 50) {
+                    do { distractorValue = Math.max(1, Math.floor(Math.random() * (correctAnswerValue + level * 5 + 10))); }
+                    while (distractors.has(distractorValue));
+                }
+
+                distractors.add(distractorValue);
+                let distractorPos = getRandomPosition();
+                if (distractorPos) {
+                    food.push({ ...distractorPos, value: distractorValue, isCorrect: false });
+                } else { console.warn("Could not place a distractor food item."); }
+                if (foodPositions.size >= (gridWidth * gridHeight) - snake.length - powerUps.length) break;
+            }
+        }
+
+        function maybeSpawnPowerUp() {
+            if (currentGameMode === 'challenge') return;
+            if (Math.random() < 0.15) {
+                let pos = getRandomPosition(); // Uses updated gridWidth/gridHeight implicitly
+                if (pos) {
+                    const type = Math.random() < 0.6 ? 'freeze' : 'life';
+                    powerUps.push({ ...pos, type: type });
+                    if (synth) powerUpSpawnSound();
+                }
+            }
+        }
+
+        function collectPowerUp(type) {
+            if (synth) powerUpCollectSound();
+            if (type === 'freeze') {
+                freezeTimer = 100;
+                rescheduleGameLoop(); // Immediately apply speed change
+            } else if (type === 'life') {
+                lives++;
+                updateUI();
+            }
+        }
+
+        function isOccupied(x, y) {
+            for (const segment of snake) if (segment.x === x && segment.y === y) return true;
+            for (const item of food) if (item.x === x && item.y === y) return true;
+            for (const pu of powerUps) if (pu.x === x && pu.y === y) return true;
+            return false;
+        }
+
+        function loseLife() {
+            lives--;
+            if (synth) eatWrongSound();
+            updateUI();
+            if (lives <= 0) {
+                gameOver("No Lives Left!");
+            }
+        }
+
+        function levelUp() {
+            level++;
+            if (synth) levelUpSound();
+            updateUI();
+            rescheduleGameLoop(); // Update loop speed immediately
+        }
+
+        function gameOver(reason = "Game Over") {
+            isGameOver = true;
+            clearInterval(gameLoopInterval); gameLoopInterval = null; lastScheduledSpeed = undefined; // Reset speed tracking
+            clearInterval(challengeTimerInterval); challengeTimerInterval = null;
+            if (synth) gameOverSound();
+
+            messageTitle.textContent = reason;
+            let finalMessage = `Mode: ${currentGameMode.charAt(0).toUpperCase() + currentGameMode.slice(1)} | Score: ${score}`;
+            if (currentGameMode !== 'challenge') { finalMessage += ` | Level: ${level}`; }
+            if (currentGameMode === 'challenge' && reason !== "Time's Up!") { finalMessage += ` | Time Left: ${formatTime(challengeTimeLeft)}`; }
+            messageText.textContent = finalMessage;
+
+            storyButton.style.display = 'none'; endlessButton.style.display = 'none'; challengeButton.style.display = 'none';
+            restartButton.style.display = 'inline-block'; menuButton.style.display = 'inline-block';
+
+            messageBox.style.display = 'flex';
+            infoBar.style.visibility = 'hidden';
+            problemDisplay.style.visibility = 'hidden';
+            controlsInfo.style.visibility = 'hidden';
+            canvas.style.opacity = '0.5';
+        }
+
+        function showMainMenu() {
+            currentGameMode = 'menu';
+            isGameOver = true;
+            clearInterval(gameLoopInterval); gameLoopInterval = null; lastScheduledSpeed = undefined; // Reset speed tracking
+            clearInterval(challengeTimerInterval); challengeTimerInterval = null;
+
+            messageTitle.textContent = "Main Menu";
+            messageText.textContent = "Select a game mode to start!";
+
+            storyButton.style.display = 'inline-block'; endlessButton.style.display = 'inline-block'; challengeButton.style.display = 'inline-block';
+            restartButton.style.display = 'none'; menuButton.style.display = 'none';
+
+            messageBox.style.display = 'flex';
+            infoBar.style.visibility = 'hidden';
+            problemDisplay.style.visibility = 'hidden';
+            problemDisplay.textContent = "Select a mode!";
+            controlsInfo.style.visibility = 'hidden';
+            canvas.style.opacity = '0.5';
+
+            ctx.fillStyle = '#95a5a6';
+            ctx.fillRect(0, 0, canvasSize.width, canvasSize.height);
+            updateUI();
+        }
+
+        function drawGame() {
+            // Uses updated canvasSize.width/height
+            ctx.fillStyle = '#95a5a6';
+            ctx.fillRect(0, 0, canvasSize.width, canvasSize.height);
+
+            // Draw Snake
+            snake.forEach((segment, index) => {
+                ctx.fillStyle = (index === 0) ? '#2ecc71' : '#27ae60';
+                ctx.strokeStyle = '#1f8b4c'; ctx.lineWidth = 2;
+                ctx.fillRect(segment.x, segment.y, box, box);
+                ctx.strokeRect(segment.x, segment.y, box, box);
+                if (index === 0) {
+                    ctx.fillStyle = 'white';
+                    const eyeSize = box / 5; const eyeOffset = box / 4;
+                    if (direction === 'UP' || direction === 'DOWN' || direction === null) {
+                        ctx.fillRect(segment.x + eyeOffset, segment.y + eyeOffset, eyeSize, eyeSize);
+                        ctx.fillRect(segment.x + box - eyeOffset - eyeSize, segment.y + eyeOffset, eyeSize, eyeSize);
+                    } else {
+                        ctx.fillRect(segment.x + eyeOffset, segment.y + eyeOffset, eyeSize, eyeSize);
+                        ctx.fillRect(segment.x + eyeOffset, segment.y + box - eyeOffset - eyeSize, eyeSize, eyeSize);
+                    }
+                }
+            });
+
+            // Draw Food
+            ctx.font = `bold ${box * 0.6}px 'Press Start 2P'`;
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            food.forEach(item => {
+                ctx.fillStyle = item.isCorrect ? '#e74c3c' : '#c0392b';
+                ctx.beginPath(); ctx.arc(item.x + box / 2, item.y + box / 2, box / 2.2, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#27ae60'; ctx.fillRect(item.x + box / 2 - box * 0.05, item.y + box * 0.1, box * 0.1, box * 0.2);
+                ctx.fillStyle = '#ffffff'; ctx.fillText(item.value, item.x + box / 2, item.y + box / 2 + 2);
+            });
+
+            // Draw Power-ups
+            powerUps.forEach(pu => {
+                ctx.font = `bold ${box * 0.7}px 'Press Start 2P'`;
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                const isFrozen = freezeTimer > 0 && pu.type === 'freeze';
+                if (pu.type === 'freeze') {
+                    ctx.fillStyle = isFrozen ? '#8e44ad' : '#3498db';
+                    ctx.fillRect(pu.x, pu.y, box, box);
+                    ctx.strokeStyle = '#2980b9'; ctx.lineWidth = 2; ctx.strokeRect(pu.x, pu.y, box, box);
+                    ctx.fillStyle = 'white'; ctx.fillText('❄️', pu.x + box / 2, pu.y + box / 2 + 2);
+                } else if (pu.type === 'life') {
+                    ctx.fillStyle = '#e91e63';
+                    ctx.fillRect(pu.x, pu.y, box, box);
+                    ctx.strokeStyle = '#c2185b'; ctx.lineWidth = 2; ctx.strokeRect(pu.x, pu.y, box, box);
+                    ctx.fillStyle = 'white'; ctx.fillText('❤️', pu.x + box / 2, pu.y + box / 2 + 2);
+                }
+            });
+        }
+
+        function formatTime(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = seconds % 60;
+            return `${minutes}:${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}`;
+        }
+
+        function updateUI() {
+            scoreDisplay.textContent = `Score: ${score || 0}`;
+            levelDisplay.textContent = `Level: ${level || 1}`;
+            let hearts = '';
+            // Handle undefined lives during initial load/menu
+            const currentLives = lives === undefined ? (currentGameMode === 'challenge' ? 1 : 3) : lives;
+            for (let i = 0; i < currentLives; i++) hearts += '❤️';
+            livesDisplay.textContent = `Lives: ${hearts || (currentGameMode === 'challenge' && currentLives > 0 ? '❤️' : 'None!')}`;
+
+            if (currentGameMode === 'challenge' && challengeTimeLeft !== undefined) {
+                timerDisplay.textContent = `Time: ${formatTime(challengeTimeLeft)}`;
+                timerDisplay.style.display = 'inline-block';
+            } else {
+                timerDisplay.style.display = 'none';
+            }
+        }
+
+        // Event Listeners (remain the same)
+        document.addEventListener('keydown', changeDirection);
+        storyButton.addEventListener('click', () => { initializeSounds(); Tone.start(); initGame('story'); });
+        endlessButton.addEventListener('click', () => { initializeSounds(); Tone.start(); initGame('endless'); });
+        challengeButton.addEventListener('click', () => { initializeSounds(); Tone.start(); initGame('challenge'); });
+        restartButton.addEventListener('click', () => { initializeSounds(); Tone.start(); if (currentGameMode !== 'menu') initGame(currentGameMode); else showMainMenu(); });
+        menuButton.addEventListener('click', showMainMenu);
+
+        // Initial Setup
+        window.onload = () => {
+            showMainMenu();
+        };
+
+    </script>
+</body>
+
+</html>

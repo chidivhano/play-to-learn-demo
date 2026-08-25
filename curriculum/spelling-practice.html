@@ -1,0 +1,1309 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Spelling Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .perspective-1000 {
+            perspective: 1000px;
+        }
+
+        .transform-style-3d {
+            transform-style: preserve-3d;
+        }
+
+        .backface-hidden {
+            backface-visibility: hidden;
+        }
+
+        .rotate-y-180 {
+            transform: rotateY(180deg);
+        }
+
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        .touch-manipulation {
+            touch-action: manipulation;
+        }
+
+        /* Utility classes for animations */
+        .animate-bounce-custom {
+            animation: bounce 1s infinite;
+        }
+
+        @keyframes bounce {
+
+            0%,
+            100% {
+                transform: translateY(-25%);
+                animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
+            }
+
+            50% {
+                transform: none;
+                animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+            }
+        }
+    </style>
+</head>
+
+<body class="min-h-[100dvh] bg-sky-100 font-sans text-slate-800 flex flex-col m-0 p-0 overflow-x-hidden">
+
+    <header
+        class="bg-white shadow-md p-3 sm:p-4 flex flex-col sm:flex-row justify-between items-center gap-3 border-b-4 border-sky-300 sticky top-0 z-10 w-full">
+        <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-start">
+            <div class="flex items-center gap-2 sm:gap-3">
+                <div class="bg-yellow-400 p-2 rounded-full shadow-sm" id="icon-book-container"></div>
+                <div>
+                    <h1 class="text-xl sm:text-2xl font-black text-sky-600 tracking-tight">Spelling Hub</h1>
+                    <p class="text-xs sm:text-sm font-bold text-slate-400">Grade 3 • Term 1</p>
+                </div>
+            </div>
+            <!-- Mobile Star Counter -->
+            <div
+                class="flex sm:hidden items-center gap-1 bg-yellow-100 px-3 py-1.5 rounded-full border-2 border-yellow-300">
+                <span id="icon-star-mobile"></span>
+                <span class="text-lg font-black text-yellow-600 star-count">0</span>
+            </div>
+        </div>
+
+        <!-- Week Selector (Only visible on Home) -->
+        <div id="week-selector-container" class="w-full sm:w-auto overflow-x-auto hide-scrollbar pb-1 sm:pb-0">
+            <div class="flex items-center gap-2 bg-slate-100 p-2 rounded-xl w-max sm:w-auto mx-auto" id="week-buttons">
+                <!-- Dynamically populated -->
+            </div>
+        </div>
+
+        <!-- Desktop Star Counter -->
+        <div class="hidden sm:flex items-center gap-2 bg-yellow-100 px-4 py-2 rounded-full border-2 border-yellow-300">
+            <span id="icon-star-desktop"></span>
+            <span class="text-xl font-black text-yellow-600 star-count">0</span>
+        </div>
+    </header>
+
+    <main id="main-content" class="p-3 sm:p-8 flex-1 w-full max-w-6xl mx-auto flex flex-col items-center">
+        <!-- Content gets injected here -->
+    </main>
+
+    <script>
+        // --- ICONS (SVG Strings) ---
+        const ICONS = {
+            BookOpen: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-white w-6 h-6 sm:w-8 sm:h-8"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>`,
+            Star: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 sm:w-6 sm:h-6 text-yellow-500"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`,
+            Volume2: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>`,
+            ArrowLeft: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 sm:w-5 sm:h-5"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>`,
+            CheckCircle: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6 sm:w-8 sm:h-8"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`,
+            XCircle: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6 sm:w-8 sm:h-8"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>`,
+            RotateCcw: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5 sm:w-8 sm:h-8"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>`,
+            Zap: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-[1em] h-[1em]"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>`
+        };
+
+        // Insert static icons
+        document.getElementById('icon-book-container').innerHTML = ICONS.BookOpen;
+        document.getElementById('icon-star-mobile').innerHTML = ICONS.Star;
+        document.getElementById('icon-star-desktop').innerHTML = ICONS.Star;
+
+        // --- DATA DICTIONARY ---
+        const SPELLING_DATA = {
+            1: { words: [{ word: "leaf", emoji: "🍃", hint: "Grows on trees and falls in autumn" }, { word: "cloud", emoji: "☁️", hint: "White fluffy thing in the sky" }, { word: "tree", emoji: "🌳", hint: "A tall plant with a wooden trunk" }, { word: "hat", emoji: "🎩", hint: "You wear this on your head" }, { word: "key", emoji: "🔑", hint: "Used to unlock a door" }, { word: "zebra", emoji: "🦓", hint: "An animal with black and white stripes" }, { word: "umbrella", emoji: "☂️", hint: "Keeps you dry in the rain" }, { word: "net", emoji: "🥅", hint: "Used to catch fish or butterflies" }, { word: "apple", emoji: "🍎", hint: "A red or green crunchy fruit" }, { word: "monkey", emoji: "🐒", hint: "An animal that swings in trees" }], sentence: "Zippy the zebra used a big red umbrella." },
+            2: { words: [{ word: "whale", emoji: "🐳", hint: "A huge animal that lives in the ocean" }, { word: "wheat", emoji: "🌾", hint: "A plant used to make flour and bread" }, { word: "chop", emoji: "🪓", hint: "To cut something into pieces" }, { word: "cheese", emoji: "🧀", hint: "A yellow dairy food that mice love" }, { word: "peach", emoji: "🍑", hint: "A soft, fuzzy, sweet fruit" }, { word: "wash", emoji: "🧼", hint: "To clean something with water" }, { word: "shark", emoji: "🦈", hint: "A scary ocean animal with sharp teeth" }, { word: "shell", emoji: "🐚", hint: "You can find this on the beach" }, { word: "thumb", emoji: "👍", hint: "The short, thick finger on your hand" }, { word: "thunder", emoji: "⚡", hint: "The loud sound during a storm" }], sentence: "Shelly shark collected sea shells on the shore." },
+            3: { words: [{ word: "broom", emoji: "🧹", hint: "You use this to sweep the floor" }, { word: "balloon", emoji: "🎈", hint: "Fills with air or gas for parties" }, { word: "breeze", emoji: "🌬️", hint: "A gentle, light wind" }, { word: "sheep", emoji: "🐑", hint: "An animal that gives us warm wool" }, { word: "boat", emoji: "⛵", hint: "A vehicle that travels on water" }, { word: "soap", emoji: "🧼", hint: "Use this with water to wash your hands" }, { word: "read", emoji: "📖", hint: "What you do with a book" }, { word: "feast", emoji: "🍗", hint: "A large, special, delicious meal" }, { word: "afraid", emoji: "😨", hint: "Feeling scared of something" }, { word: "spray", emoji: "💦", hint: "To squirt tiny drops of liquid" }], sentence: "The green balloon blew in the cool breeze." },
+            4: { words: [{ word: "month", emoji: "📅", hint: "About 30 days in a year (like January)" }, { word: "earth", emoji: "🌍", hint: "The planet we live on" }, { word: "path", emoji: "🛤️", hint: "A trail you can walk on" }, { word: "moth", emoji: "🦋", hint: "Looks like a butterfly but flies at night" }, { word: "feather", emoji: "🪶", hint: "This covers a bird's body" }, { word: "whistle", emoji: "😗", hint: "To make a high sound by blowing air" }, { word: "wheel", emoji: "🛞", hint: "The round thing on a car or bike" }, { word: "white", emoji: "⚪", hint: "The color of snow or clouds" }, { word: "why", emoji: "❓", hint: "A question word asking for a reason" }, { word: "when", emoji: "⏰", hint: "A question word asking what time" }], sentence: "Willy the whale blew his small white whistle." },
+            5: { words: [{ word: "bike", emoji: "🚲", hint: "Has two wheels and pedals to ride" }, { word: "kite", emoji: "🪁", hint: "Flies high in the sky on a string" }, { word: "flame", emoji: "🔥", hint: "The bright, hot part of a fire" }, { word: "game", emoji: "🎮", hint: "Something fun you play for entertainment" }, { word: "snake", emoji: "🐍", hint: "A long animal with no arms or legs" }, { word: "cake", emoji: "🎂", hint: "A sweet baked treat for birthdays" }, { word: "rode", emoji: "🐎", hint: "Past tense of ride (I ___ a horse)" }, { word: "stone", emoji: "🪨", hint: "A small, hard piece of rock" }, { word: "plate", emoji: "🍽️", hint: "A flat dish you eat food off of" }, { word: "gate", emoji: "🚪", hint: "A door that opens in a fence" }], sentence: "Simon the snake ate a slice of cake." },
+            6: { words: [{ word: "shallow", emoji: "🪸", hint: "Not deep; water you can easily stand in" }, { word: "tomorrow", emoji: "⏭️", hint: "The day after today" }, { word: "elbow", emoji: "💪", hint: "The bendy joint in the middle of your arm" }, { word: "throw", emoji: "⚾", hint: "To toss something, like a ball" }, { word: "snow", emoji: "❄️", hint: "Cold white flakes that fall from the sky" }, { word: "cow", emoji: "🐄", hint: "A farm animal that gives us milk" }, { word: "pillow", emoji: "🛌", hint: "A soft cushion for your head in bed" }, { word: "shadow", emoji: "👤", hint: "The dark shape made when light is blocked" }, { word: "window", emoji: "🪟", hint: "A glass opening in a wall to look outside" }, { word: "bow", emoji: "🎀", hint: "A pretty decorative knot, often in hair" }], sentence: "Candy the cow wore a bright yellow bow." },
+            8: { words: [{ word: "bench", emoji: "🪑", hint: "A long seat usually found in a park" }, { word: "champ", emoji: "🏆", hint: "Short for champion; a winner" }, { word: "chick", emoji: "🐥", hint: "A fluffy baby chicken" }, { word: "crash", emoji: "💥", hint: "A loud noise when things hit each other" }, { word: "fish", emoji: "🐟", hint: "An animal that swims underwater and has gills" }, { word: "trash", emoji: "🗑️", hint: "Garbage or rubbish you throw away" }, { word: "bath", emoji: "🛁", hint: "Washing your whole body in a tub of water" }, { word: "thump", emoji: "🥊", hint: "A heavy, dull sound when something hits" }, { word: "whisk", emoji: "🍳", hint: "A kitchen tool used to mix eggs" }, { word: "whack", emoji: "🏏", hint: "To hit something with a loud smack" }], sentence: "Fred the fish was the new swimming champ." },
+            9: { words: [{ word: "whale", emoji: "🐳", hint: "A huge animal that lives in the ocean" }, { word: "wheat", emoji: "🌾", hint: "A plant used to make flour and bread" }, { word: "chop", emoji: "🪓", hint: "To cut something into pieces" }, { word: "cheese", emoji: "🧀", hint: "A yellow dairy food that mice love" }, { word: "boat", emoji: "⛵", hint: "A vehicle that travels on water" }, { word: "soap", emoji: "🧼", hint: "Use this with water to wash your hands" }, { word: "read", emoji: "📖", hint: "What you do with a book" }, { word: "feast", emoji: "🍗", hint: "A large, special, delicious meal" }, { word: "afraid", emoji: "😨", hint: "Feeling scared of something" }, { word: "spray", emoji: "💦", hint: "To squirt tiny drops of liquid" }], sentence: "You must always wash your hands with soap." },
+            10: { words: [{ word: "whistle", emoji: "😗", hint: "To make a high sound by blowing air" }, { word: "wheel", emoji: "🛞", hint: "The round thing on a car or bike" }, { word: "white", emoji: "⚪", hint: "The color of snow or clouds" }, { word: "why", emoji: "❓", hint: "A question word asking for a reason" }, { word: "month", emoji: "📅", hint: "About 30 days in a year (like January)" }, { word: "earth", emoji: "🌍", hint: "The planet we live on" }, { word: "path", emoji: "🛤️", hint: "A trail you can walk on" }, { word: "moth", emoji: "🦋", hint: "Looks like a butterfly but flies at night" }, { word: "thumb", emoji: "👍", hint: "The short, thick finger on your hand" }, { word: "thunder", emoji: "⚡", hint: "The loud sound during a storm" }], sentence: "Ouch! I hurt my elbow and thumb." }
+        };
+
+        const AVAILABLE_WEEKS = [1, 2, 3, 4, 5, 6, 8, 9, 10];
+        const GAMES = [
+            { id: 'listen', name: 'Listen & Spell', color: 'bg-blue-400', icon: '🎧' },
+            { id: 'picture', name: 'Picture Puzzle', color: 'bg-green-400', icon: '🧩' },
+            { id: 'hint', name: 'Hint Master', color: 'bg-yellow-400', icon: '💡' },
+            { id: 'scramble', name: 'Word Scramble', color: 'bg-orange-400', icon: '🌪️' },
+            { id: 'missing', name: 'Missing Letters', color: 'bg-pink-400', icon: '🕳️' },
+            { id: 'flashcards', name: 'Flashcards', color: 'bg-purple-400', icon: '🃏' },
+            { id: 'rightwrong', name: 'Right or Wrong?', color: 'bg-red-400', icon: '✅' },
+            { id: 'sentence', name: 'Sentence Fill', color: 'bg-teal-400', icon: '✍️' },
+            { id: 'memory', name: 'Memory Match', color: 'bg-indigo-400', icon: '🧠' },
+            { id: 'speed', name: 'Speed Bee', color: 'bg-rose-400', icon: '⏱️' }
+        ];
+
+        // --- STATE MANAGEMENT ---
+        const state = {
+            selectedWeek: '1',
+            currentView: 'home',
+            stars: 0,
+            activeGameInterval: null
+        };
+
+        const getActiveWords = () => {
+            if (state.selectedWeek === 'all') {
+                return Object.values(SPELLING_DATA).flatMap(week => week.words);
+            }
+            return SPELLING_DATA[state.selectedWeek].words;
+        };
+
+        const addStars = (amount) => {
+            state.stars += amount;
+            document.querySelectorAll('.star-count').forEach(el => el.textContent = state.stars);
+        };
+
+        const setView = (viewId) => {
+            if (state.activeGameInterval) {
+                clearInterval(state.activeGameInterval);
+                state.activeGameInterval = null;
+            }
+            state.currentView = viewId;
+            renderApp();
+        };
+
+        const setWeek = (week) => {
+            state.selectedWeek = week.toString();
+            renderHeader();
+            if (state.currentView === 'home') {
+                renderHome();
+            }
+        };
+
+        // --- AUDIO & UTILITIES ---
+        let audioCtx;
+        const initAudio = () => {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        };
+
+        const playTone = (freq, type, duration, vol = 0.1) => {
+            initAudio();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        };
+
+        const playSound = {
+            pop: () => { initAudio(); playTone(600, 'sine', 0.1); },
+            win: () => {
+                initAudio();
+                playTone(400, 'sine', 0.1);
+                setTimeout(() => playTone(600, 'sine', 0.2), 100);
+                setTimeout(() => playTone(800, 'sine', 0.3), 200);
+            },
+            lose: () => {
+                initAudio();
+                playTone(300, 'sawtooth', 0.3);
+                setTimeout(() => playTone(200, 'sawtooth', 0.4), 200);
+            }
+        };
+
+        const speakWord = (text) => {
+            if (!window.speechSynthesis) return;
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.rate = 0.8;
+            utterance.pitch = 1.1;
+            window.speechSynthesis.speak(utterance);
+        };
+
+        const shuffleArray = (array) => {
+            const newArr = [...array];
+            for (let i = newArr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [newArr[i], newArr[j]] = [newArr[j], newArr[i]];
+            }
+            return newArr;
+        };
+
+        // --- UI COMPONENT GENERATORS ---
+        const generateScoreBoardHTML = (correct, total) => {
+            const percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
+            const colorClass = percentage === 100 ? 'text-green-500' : percentage >= 50 ? 'text-blue-500' : 'text-slate-600';
+            return `
+                <div class="flex items-center gap-4 bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-200 mb-4 w-full max-w-xs justify-between">
+                   <div class="flex flex-col items-center">
+                     <span class="text-xs font-bold text-slate-400 uppercase">Percent</span>
+                     <span class="text-xl font-black ${colorClass}" id="sb-percent-text">${percentage}%</span>
+                   </div>
+                   <div class="h-8 w-px bg-slate-200"></div>
+                   <div class="flex flex-col items-center">
+                     <span class="text-xs font-bold text-slate-400 uppercase">Score</span>
+                     <span class="text-lg font-bold text-slate-700" id="sb-score-text">${correct} / ${total}</span>
+                   </div>
+                   <div id="game-stats" style="display:none" data-percentage="${percentage}" data-correct="${correct}" data-total="${total}"></div>
+                </div>
+            `;
+        };
+
+        const updateScoreBoardUI = (correct, total) => {
+            const percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
+            const ptEl = document.getElementById('sb-percent-text');
+            const stEl = document.getElementById('sb-score-text');
+            const hookEl = document.getElementById('game-stats');
+
+            if (ptEl && stEl && hookEl) {
+                ptEl.textContent = `${percentage}%`;
+                ptEl.className = `text-xl font-black ${percentage === 100 ? 'text-green-500' : percentage >= 50 ? 'text-blue-500' : 'text-slate-600'}`;
+                stEl.textContent = `${correct} / ${total}`;
+                hookEl.setAttribute('data-percentage', percentage);
+                hookEl.setAttribute('data-correct', correct);
+                hookEl.setAttribute('data-total', total);
+            }
+        };
+
+        // --- RENDERING LOGIC ---
+        const renderHeader = () => {
+            const weekContainer = document.getElementById('week-selector-container');
+            const weekButtons = document.getElementById('week-buttons');
+
+            if (state.currentView !== 'home') {
+                weekContainer.classList.add('hidden');
+            } else {
+                weekContainer.classList.remove('hidden');
+                weekButtons.innerHTML = `
+                    <span class="font-bold text-slate-500 mr-1 sm:mr-2 text-sm sm:text-base">Week:</span>
+                    ${AVAILABLE_WEEKS.map(w => `
+                        <button
+                            onclick="playSound.pop(); setWeek('${w}')"
+                            class="w-10 h-10 sm:w-10 sm:h-10 rounded-lg font-bold text-base sm:text-lg flex-shrink-0 transition-transform hover:scale-110 active:scale-95 touch-manipulation ${state.selectedWeek === w.toString() ? 'bg-sky-500 text-white shadow-lg' : 'bg-white text-slate-600 hover:bg-sky-100'}"
+                        >
+                            ${w}
+                        </button>
+                    `).join('')}
+                    <button
+                        onclick="playSound.pop(); setWeek('all')"
+                        class="px-4 h-10 rounded-lg font-bold text-sm sm:text-lg flex-shrink-0 transition-transform hover:scale-110 active:scale-95 touch-manipulation ${state.selectedWeek === 'all' ? 'bg-purple-500 text-white shadow-lg' : 'bg-white text-slate-600 hover:bg-purple-100'}"
+                    >
+                        ALL
+                    </button>
+                `;
+            }
+        };
+
+        const renderHome = () => {
+            const main = document.getElementById('main-content');
+            const wordCount = state.selectedWeek === 'all' ? 'all 90' : `Week ${state.selectedWeek}`;
+
+            main.innerHTML = `
+                <div class="w-full mt-2 sm:mt-0">
+                    <div class="text-center mb-6 sm:mb-10">
+                        <h2 class="text-2xl sm:text-3xl md:text-5xl font-black text-slate-700 mb-2 sm:mb-4">
+                            Ready to Play, <br class="sm:hidden" /><span class="text-sky-500">Super Speller?</span>
+                        </h2>
+                        <p class="text-sm sm:text-xl text-slate-500 font-medium px-4">
+                            Practicing ${wordCount} words. Pick a game below!
+                        </p>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-6 px-1 sm:px-0" id="games-grid">
+                    </div>
+                </div>
+            `;
+
+            const grid = document.getElementById('games-grid');
+            GAMES.forEach(game => {
+                const btn = document.createElement('button');
+                btn.className = `${game.color} text-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-lg sm:shadow-xl transform transition-all hover:-translate-y-1 sm:hover:-translate-y-2 hover:shadow-2xl active:scale-95 flex flex-col items-center justify-center gap-2 sm:gap-4 border-b-4 sm:border-b-8 border-black/20 touch-manipulation`;
+                btn.innerHTML = `
+                    <div class="text-4xl sm:text-6xl filter drop-shadow-md">${game.icon}</div>
+                    <h3 class="text-sm sm:text-xl font-bold text-center leading-tight">${game.name}</h3>
+                `;
+                btn.onclick = () => { playSound.pop(); setView(game.id); };
+                grid.appendChild(btn);
+            });
+        };
+
+        const renderGameContainer = () => {
+            const main = document.getElementById('main-content');
+            main.innerHTML = `
+                <div class="w-full max-w-3xl flex flex-col h-full flex-1">
+                    <button onclick="playSound.pop(); setView('home')" class="mb-4 sm:mb-6 flex items-center gap-2 text-sky-600 font-bold hover:text-sky-800 transition-colors bg-white px-4 py-2 rounded-full shadow-sm w-max touch-manipulation active:scale-95">
+                        ${ICONS.ArrowLeft} Back
+                    </button>
+                    <div id="game-area" class="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-10 shadow-2xl border-b-4 sm:border-b-8 border-slate-200 flex-1 flex flex-col min-h-[60vh]">
+                    </div>
+                </div>
+            `;
+            return document.getElementById('game-area');
+        };
+
+        // --- INDIVIDUAL GAMES LOGIC ---
+
+        const initListenSpell = (container) => {
+            const words = shuffleArray(getActiveWords());
+            let currentIndex = 0;
+            let status = 'idle';
+            let stats = { correct: 0, total: 0 };
+
+            const render = () => {
+                const currentWord = words[currentIndex];
+                container.innerHTML = `
+                    <div class="flex flex-col items-center justify-center flex-1 text-center">
+                        ${generateScoreBoardHTML(stats.correct, stats.total)}
+                        <h2 class="text-3xl font-black text-slate-700 mb-8 flex items-center gap-3">
+                            <span class="text-4xl">🎧</span> Listen & Spell
+                        </h2>
+                        
+                        <button id="ls-speak-btn" class="w-32 h-32 bg-blue-500 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-blue-600 transition-transform hover:scale-105 active:scale-95 mb-8 border-b-8 border-blue-700 touch-manipulation">
+                            <div class="w-16 h-16">${ICONS.Volume2}</div>
+                        </button>
+
+                        <input type="text" id="ls-input" class="w-full max-w-sm text-center text-4xl font-bold p-4 border-4 border-slate-300 rounded-2xl outline-none transition-colors focus:border-blue-400" placeholder="Type here..." autocomplete="off">
+
+                        <button id="ls-check-btn" class="mt-8 bg-green-500 text-white px-10 py-4 rounded-full font-bold text-2xl shadow-lg border-b-8 border-green-700 hover:bg-green-600 active:translate-y-2 active:border-b-0 transition-all touch-manipulation">
+                            Check!
+                        </button>
+                    </div>
+                `;
+
+                const inputEl = document.getElementById('ls-input');
+                const checkBtn = document.getElementById('ls-check-btn');
+                const speakBtn = document.getElementById('ls-speak-btn');
+
+                inputEl.focus();
+
+                speakBtn.onclick = () => { playSound.pop(); speakWord(currentWord.word); };
+                if (status === 'idle') speakWord(currentWord.word);
+
+                const doCheck = () => {
+                    if (status !== 'idle') return;
+                    const val = inputEl.value;
+                    const isCorrect = val.toLowerCase().trim() === currentWord.word.toLowerCase();
+
+                    stats.correct += isCorrect ? 1 : 0;
+                    stats.total += 1;
+                    updateScoreBoardUI(stats.correct, stats.total);
+
+                    status = isCorrect ? 'correct' : 'wrong';
+                    inputEl.disabled = true;
+                    checkBtn.disabled = true;
+                    checkBtn.className = "mt-8 bg-slate-400 text-white border-slate-600 px-10 py-4 rounded-full font-bold text-2xl shadow-lg border-b-8 transition-all touch-manipulation cursor-not-allowed";
+
+                    if (isCorrect) {
+                        playSound.win();
+                        addStars(5);
+                        inputEl.className = "w-full max-w-sm text-center text-4xl font-bold p-4 border-4 rounded-2xl outline-none transition-colors border-green-400 bg-green-50 text-green-600";
+                        setTimeout(() => {
+                            status = 'idle';
+                            currentIndex = (currentIndex + 1) % words.length;
+                            render();
+                        }, 1500);
+                    } else {
+                        playSound.lose();
+                        inputEl.className = "w-full max-w-sm text-center text-4xl font-bold p-4 border-4 rounded-2xl outline-none transition-colors border-red-400 bg-red-50 text-red-600 animate-bounce-custom";
+                        setTimeout(() => {
+                            status = 'idle';
+                            inputEl.disabled = false;
+                            checkBtn.disabled = false;
+                            inputEl.value = '';
+                            inputEl.focus();
+                            inputEl.className = "w-full max-w-sm text-center text-4xl font-bold p-4 border-4 border-slate-300 rounded-2xl outline-none transition-colors focus:border-blue-400";
+                            checkBtn.className = "mt-8 bg-green-500 text-white px-10 py-4 rounded-full font-bold text-2xl shadow-lg border-b-8 border-green-700 hover:bg-green-600 active:translate-y-2 active:border-b-0 transition-all touch-manipulation";
+                        }, 1000);
+                    }
+                };
+
+                checkBtn.onclick = () => { playSound.pop(); doCheck(); };
+                inputEl.onkeydown = (e) => { if (e.key === 'Enter') doCheck(); };
+            };
+            render();
+        };
+
+        const initPicturePuzzle = (container) => {
+            const words = shuffleArray(getActiveWords());
+            let currentIndex = 0;
+            let slots = [];
+            let letters = [];
+            let stats = { correct: 0, total: 0 };
+            let status = 'idle';
+
+            const setupWord = () => {
+                const w = words[currentIndex].word;
+                const arr = w.split('');
+                letters = shuffleArray(arr.map((char, i) => ({ char, id: i })));
+                slots = Array(arr.length).fill(null);
+                status = 'idle';
+                renderBoard();
+            };
+
+            const renderBoard = () => {
+                const currentWord = words[currentIndex];
+                container.innerHTML = `
+                    <div class="flex flex-col items-center justify-center flex-1 py-2 sm:py-0 w-full">
+                        ${generateScoreBoardHTML(stats.correct, stats.total)}
+                        <h2 class="text-2xl sm:text-3xl font-black text-slate-700 mb-4 sm:mb-6 flex items-center gap-2 sm:gap-3">
+                            <span class="text-3xl sm:text-4xl">🧩</span> Picture Puzzle
+                        </h2>
+                        <div class="flex items-center justify-center gap-4 sm:gap-8 mb-6 sm:mb-10">
+                            <div class="text-7xl sm:text-9xl drop-shadow-xl animate-pulse">${currentWord.emoji}</div>
+                            <button id="pp-speak" class="p-3 sm:p-5 bg-blue-500 text-white rounded-full shadow-lg hover:bg-blue-600 active:scale-95 transition-all touch-manipulation border-b-4 border-blue-700">
+                                <div class="w-8 h-8 sm:w-10 sm:h-10">${ICONS.Volume2}</div>
+                            </button>
+                        </div>
+                        <div class="flex gap-1 sm:gap-2 mb-8 sm:mb-10 flex-wrap justify-center w-full" id="pp-slots"></div>
+                        <div class="flex gap-2 sm:gap-3 flex-wrap justify-center bg-slate-100 p-4 sm:p-6 rounded-2xl sm:rounded-3xl min-h-[100px] w-full max-w-lg border-4 border-slate-200" id="pp-letters"></div>
+                    </div>
+                `;
+
+                document.getElementById('pp-speak').onclick = () => { playSound.pop(); speakWord(currentWord.word); };
+                updateBoardPieces();
+            };
+
+            const updateBoardPieces = () => {
+                const slotsContainer = document.getElementById('pp-slots');
+                const lettersContainer = document.getElementById('pp-letters');
+
+                slotsContainer.innerHTML = '';
+                slots.forEach((slot, i) => {
+                    const div = document.createElement('div');
+                    div.className = `w-12 h-14 sm:w-20 sm:h-20 border-4 rounded-xl flex items-center justify-center text-3xl sm:text-4xl font-bold cursor-pointer transition-all touch-manipulation ${slot ? 'bg-sky-400 border-sky-600 text-white shadow-md' : 'border-dashed border-slate-300 bg-slate-50'}`;
+                    div.textContent = slot ? slot.char : '';
+                    div.onclick = () => {
+                        if (!slot || status !== 'idle') return;
+                        playSound.pop();
+                        slots[i] = null;
+                        letters.push(slot);
+                        updateBoardPieces();
+                    };
+                    slotsContainer.appendChild(div);
+                });
+
+                lettersContainer.innerHTML = '';
+                letters.forEach(l => {
+                    const btn = document.createElement('button');
+                    btn.className = "w-12 h-14 sm:w-20 sm:h-20 bg-yellow-400 border-b-4 sm:border-b-8 border-yellow-600 rounded-xl text-3xl sm:text-4xl font-bold text-yellow-900 shadow-sm hover:-translate-y-1 active:translate-y-1 active:border-b-0 transition-all touch-manipulation";
+                    btn.textContent = l.char;
+                    btn.onclick = () => {
+                        if (status !== 'idle') return;
+                        playSound.pop();
+                        const emptyIndex = slots.findIndex(s => s === null);
+                        if (emptyIndex !== -1) {
+                            slots[emptyIndex] = l;
+                            letters = letters.filter(item => item.id !== l.id);
+                            updateBoardPieces();
+                            checkWin();
+                        }
+                    };
+                    lettersContainer.appendChild(btn);
+                });
+            };
+
+            const checkWin = () => {
+                if (slots.every(s => s !== null)) {
+                    status = 'checking';
+                    const guessed = slots.map(s => s.char).join('');
+                    const currentWord = words[currentIndex].word;
+                    const isCorrect = guessed.toLowerCase() === currentWord.toLowerCase();
+
+                    stats.correct += isCorrect ? 1 : 0;
+                    stats.total += 1;
+                    updateScoreBoardUI(stats.correct, stats.total);
+
+                    if (isCorrect) {
+                        playSound.win();
+                        addStars(5);
+                        setTimeout(() => {
+                            currentIndex = (currentIndex + 1) % words.length;
+                            setupWord();
+                        }, 1500);
+                    } else {
+                        playSound.lose();
+                        setTimeout(() => {
+                            setupWord(); // reset current word
+                        }, 800);
+                    }
+                }
+            };
+            setupWord();
+        };
+
+        const initHintMaster = (container) => {
+            const words = shuffleArray(getActiveWords());
+            let currentIndex = 0;
+            let status = 'idle';
+            let stats = { correct: 0, total: 0 };
+
+            const render = () => {
+                const currentWord = words[currentIndex];
+                container.innerHTML = `
+                    <div class="flex flex-col items-center justify-center flex-1 text-center w-full">
+                        ${generateScoreBoardHTML(stats.correct, stats.total)}
+                        <h2 class="text-3xl font-black text-slate-700 mb-8 flex items-center gap-3">
+                            <span class="text-4xl">💡</span> Hint Master
+                        </h2>
+                        <div class="bg-yellow-100 border-4 border-yellow-300 rounded-3xl p-8 mb-8 max-w-md w-full relative">
+                            <div class="absolute -top-6 -left-6 text-6xl drop-shadow-md">🤔</div>
+                            <p class="text-2xl font-bold text-yellow-800 leading-relaxed">"${currentWord.hint}"</p>
+                        </div>
+                        <div class="flex gap-4 mb-8">
+                             <button id="hm-speak" class="p-3 bg-slate-200 hover:bg-slate-300 rounded-full transition-colors touch-manipulation">
+                                ${ICONS.Volume2.replace('class="', 'class="w-6 h-6 text-slate-600 ')}
+                             </button>
+                        </div>
+                        <input type="text" id="hm-input" class="w-full max-w-sm text-center text-4xl font-bold p-4 border-4 border-slate-300 rounded-2xl outline-none transition-colors focus:border-yellow-400" placeholder="Spell it..." autocomplete="off">
+                        <button id="hm-check" class="mt-8 bg-yellow-400 text-yellow-900 px-10 py-4 rounded-full font-bold text-2xl shadow-lg border-b-8 border-yellow-600 hover:bg-yellow-300 active:translate-y-2 active:border-b-0 transition-all touch-manipulation">
+                            Submit
+                        </button>
+                    </div>
+                `;
+
+                const inputEl = document.getElementById('hm-input');
+                const checkBtn = document.getElementById('hm-check');
+
+                document.getElementById('hm-speak').onclick = () => { playSound.pop(); speakWord(currentWord.hint); };
+
+                const doCheck = () => {
+                    if (status !== 'idle') return;
+                    const isCorrect = inputEl.value.toLowerCase().trim() === currentWord.word.toLowerCase();
+                    stats.correct += isCorrect ? 1 : 0;
+                    stats.total += 1;
+                    updateScoreBoardUI(stats.correct, stats.total);
+
+                    status = isCorrect ? 'correct' : 'wrong';
+                    inputEl.disabled = true;
+                    checkBtn.disabled = true;
+                    checkBtn.className = "mt-8 bg-slate-400 text-white border-slate-600 px-10 py-4 rounded-full font-bold text-2xl shadow-lg border-b-8 transition-all touch-manipulation cursor-not-allowed";
+
+                    if (isCorrect) {
+                        playSound.win();
+                        addStars(5);
+                        inputEl.className = "w-full max-w-sm text-center text-4xl font-bold p-4 border-4 rounded-2xl outline-none transition-colors border-green-400 bg-green-50 text-green-600";
+                        setTimeout(() => {
+                            status = 'idle';
+                            currentIndex = (currentIndex + 1) % words.length;
+                            render();
+                        }, 1500);
+                    } else {
+                        playSound.lose();
+                        inputEl.className = "w-full max-w-sm text-center text-4xl font-bold p-4 border-4 rounded-2xl outline-none transition-colors border-red-400 bg-red-50 text-red-600";
+                        setTimeout(() => {
+                            status = 'idle';
+                            inputEl.disabled = false;
+                            checkBtn.disabled = false;
+                            inputEl.value = '';
+                            inputEl.focus();
+                            inputEl.className = "w-full max-w-sm text-center text-4xl font-bold p-4 border-4 border-slate-300 rounded-2xl outline-none transition-colors focus:border-yellow-400";
+                            checkBtn.className = "mt-8 bg-yellow-400 text-yellow-900 px-10 py-4 rounded-full font-bold text-2xl shadow-lg border-b-8 border-yellow-600 hover:bg-yellow-300 active:translate-y-2 active:border-b-0 transition-all touch-manipulation";
+                        }, 1000);
+                    }
+                };
+                checkBtn.onclick = () => { playSound.pop(); doCheck(); };
+                inputEl.onkeydown = (e) => { if (e.key === 'Enter') doCheck(); };
+            };
+            render();
+        };
+
+        const initWordScramble = (container) => {
+            const words = shuffleArray(getActiveWords());
+            let currentIndex = 0;
+            let scrambled = [];
+            let selectedIndex = null;
+            let status = 'idle';
+            let stats = { correct: 0, total: 0 };
+
+            const setupWord = () => {
+                const w = words[currentIndex].word;
+                let arr = w.split('');
+                while (arr.join('') === w) arr = shuffleArray(arr);
+                scrambled = arr.map((char, i) => ({ char, id: i }));
+                selectedIndex = null;
+                status = 'idle';
+                renderBoard();
+            };
+
+            const renderBoard = () => {
+                const currentWord = words[currentIndex];
+                container.innerHTML = `
+                    <div class="flex flex-col items-center justify-center flex-1 w-full">
+                        ${generateScoreBoardHTML(stats.correct, stats.total)}
+                        <h2 class="text-3xl font-black text-slate-700 mb-2 flex items-center gap-3">
+                            <span class="text-4xl">🌪️</span> Word Scramble
+                        </h2>
+                        <p class="text-slate-500 mb-6 sm:mb-10 font-medium">Click two letters to swap them!</p>
+                        <div class="flex items-center justify-center gap-4 sm:gap-8 mb-8 sm:mb-12">
+                            <div class="text-7xl sm:text-8xl drop-shadow-xl">${currentWord.emoji}</div>
+                            <button id="ws-speak" class="p-3 sm:p-5 bg-blue-500 text-white rounded-full shadow-lg hover:bg-blue-600 active:scale-95 transition-all touch-manipulation border-b-4 border-blue-700">
+                                <div class="w-8 h-8 sm:w-10 sm:h-10">${ICONS.Volume2}</div>
+                            </button>
+                        </div>
+                        <div class="flex gap-3 flex-wrap justify-center bg-orange-50 p-8 rounded-3xl border-4 border-orange-200" id="ws-blocks"></div>
+                    </div>
+                `;
+                document.getElementById('ws-speak').onclick = () => { playSound.pop(); speakWord(currentWord.word); };
+                updateBlocks();
+            };
+
+            const updateBlocks = () => {
+                const blocksContainer = document.getElementById('ws-blocks');
+                blocksContainer.innerHTML = '';
+                scrambled.forEach((item, i) => {
+                    const btn = document.createElement('button');
+                    btn.className = `w-16 h-16 sm:w-20 sm:h-20 text-4xl font-bold rounded-xl shadow-md transition-all touch-manipulation ${selectedIndex === i ? 'bg-orange-500 text-white scale-110 -translate-y-2' : 'bg-white text-orange-600 border-b-8 border-orange-200 hover:-translate-y-1'}`;
+                    btn.textContent = item.char;
+                    btn.onclick = () => {
+                        if (status !== 'idle') return;
+                        playSound.pop();
+                        if (selectedIndex === null) {
+                            selectedIndex = i;
+                            updateBlocks();
+                        } else {
+                            // Swap
+                            [scrambled[selectedIndex], scrambled[i]] = [scrambled[i], scrambled[selectedIndex]];
+                            selectedIndex = null;
+                            updateBlocks();
+                            checkWin();
+                        }
+                    };
+                    blocksContainer.appendChild(btn);
+                });
+            };
+
+            const checkWin = () => {
+                const currentStr = scrambled.map(n => n.char).join('');
+                if (currentStr === words[currentIndex].word) {
+                    status = 'correct';
+                    stats.correct++;
+                    stats.total++;
+                    updateScoreBoardUI(stats.correct, stats.total);
+
+                    // visual feedback block lock
+                    const blocks = document.getElementById('ws-blocks').querySelectorAll('button');
+                    blocks.forEach(b => { b.className = 'w-16 h-16 sm:w-20 sm:h-20 text-4xl font-bold rounded-xl shadow-md bg-green-500 text-white transition-all'; });
+
+                    setTimeout(() => {
+                        playSound.win();
+                        addStars(5);
+                        setTimeout(() => {
+                            currentIndex = (currentIndex + 1) % words.length;
+                            setupWord();
+                        }, 1000);
+                    }, 100);
+                }
+            };
+            setupWord();
+        };
+
+        const initMissingLetters = (container) => {
+            const words = shuffleArray(getActiveWords());
+            let currentIndex = 0;
+            let missingIndex = 0;
+            let options = [];
+            let status = 'idle';
+            let stats = { correct: 0, total: 0 };
+
+            const setupWord = () => {
+                const w = words[currentIndex].word;
+                const wordLen = w.length;
+                missingIndex = Math.floor(Math.random() * (wordLen > 2 ? wordLen - 1 : wordLen)) + (wordLen > 2 ? 1 : 0);
+                const correctLetter = w[missingIndex];
+                const alphabet = 'abcdefghijklmnopqrstuvwxyz'.split('');
+                const wrongLetters = shuffleArray(alphabet.filter(l => l !== correctLetter)).slice(0, 3);
+                options = shuffleArray([correctLetter, ...wrongLetters]);
+                status = 'idle';
+                render();
+            };
+
+            const render = () => {
+                const currentWord = words[currentIndex];
+                container.innerHTML = `
+                    <div class="flex flex-col items-center justify-center flex-1 py-2 sm:py-0 w-full">
+                        ${generateScoreBoardHTML(stats.correct, stats.total)}
+                        <h2 class="text-2xl sm:text-3xl font-black text-slate-700 mb-4 sm:mb-6 flex items-center gap-2 sm:gap-3">
+                            <span class="text-3xl sm:text-4xl">🕳️</span> Missing Letter
+                        </h2>
+                        <button id="ml-speak" class="mb-6 sm:mb-10 p-3 sm:p-4 bg-blue-500 text-white rounded-full shadow-lg hover:bg-blue-600 active:scale-95 transition-all touch-manipulation border-b-4 border-blue-700 flex items-center gap-2">
+                            ${ICONS.Volume2} <span class="font-bold hidden sm:inline">Hear Word</span>
+                        </button>
+                        <div class="flex gap-1 sm:gap-4 mb-10 sm:mb-16 flex-wrap justify-center" id="ml-word-display"></div>
+                        <div class="grid grid-cols-2 gap-3 sm:gap-4 w-full max-w-sm px-4 sm:px-0" id="ml-options"></div>
+                    </div>
+                `;
+
+                document.getElementById('ml-speak').onclick = () => { playSound.pop(); speakWord(currentWord.word); };
+                updateDisplay();
+            };
+
+            const updateDisplay = () => {
+                const w = words[currentIndex].word;
+                const display = document.getElementById('ml-word-display');
+                display.innerHTML = w.split('').map((char, i) => `
+                    <div class="w-10 h-14 sm:w-20 sm:h-24 flex items-center justify-center text-3xl sm:text-6xl font-black rounded-xl ${i === missingIndex ? (status === 'correct' ? 'text-green-500 bg-green-100' : 'border-b-4 sm:border-b-8 border-slate-300 text-pink-500 bg-pink-50') : 'text-slate-700 bg-slate-100'}">
+                        ${i === missingIndex ? (status === 'correct' ? char : '_') : char}
+                    </div>
+                `).join('');
+
+                const optsContainer = document.getElementById('ml-options');
+                optsContainer.innerHTML = '';
+                options.forEach(opt => {
+                    const btn = document.createElement('button');
+                    const isCorrectAnswer = opt === w[missingIndex];
+                    btn.className = `text-3xl sm:text-4xl font-bold py-4 sm:py-6 rounded-xl sm:rounded-2xl shadow-sm border-b-4 sm:border-b-8 transition-all hover:-translate-y-1 active:translate-y-1 active:border-b-0 touch-manipulation ${status === 'correct' && isCorrectAnswer ? 'bg-green-400 border-green-600 text-white' : 'bg-pink-400 border-pink-600 text-white'}`;
+                    btn.textContent = opt;
+                    btn.disabled = status !== 'idle';
+                    btn.onclick = () => {
+                        if (status !== 'idle') return;
+                        playSound.pop();
+
+                        stats.correct += isCorrectAnswer ? 1 : 0;
+                        stats.total += 1;
+                        updateScoreBoardUI(stats.correct, stats.total);
+
+                        if (isCorrectAnswer) {
+                            status = 'correct';
+                            playSound.win();
+                            addStars(3);
+                            updateDisplay(); // re-render to show green
+                            setTimeout(() => {
+                                currentIndex = (currentIndex + 1) % words.length;
+                                setupWord();
+                            }, 1000);
+                        } else {
+                            status = 'wrong';
+                            playSound.lose();
+                            btn.classList.replace('bg-pink-400', 'bg-red-500');
+                            btn.classList.replace('border-pink-600', 'border-red-700');
+                            setTimeout(() => {
+                                status = 'idle';
+                                updateDisplay();
+                            }, 600);
+                        }
+                    };
+                    optsContainer.appendChild(btn);
+                });
+            };
+            setupWord();
+        };
+
+        const initFlashcards = (container) => {
+            const words = getActiveWords();
+            let currentIndex = 0;
+            let isFlipped = false;
+
+            const render = () => {
+                const currentWord = words[currentIndex];
+                container.innerHTML = `
+                    <div class="flex flex-col items-center justify-center flex-1 w-full">
+                        <h2 class="text-3xl font-black text-slate-700 mb-8 flex items-center gap-3">
+                            <span class="text-4xl">🃏</span> Study Flashcards
+                        </h2>
+                        <div id="fc-card" class="relative w-full max-w-sm h-80 sm:h-96 perspective-1000 cursor-pointer mb-8 group">
+                            <div id="fc-inner" class="w-full h-full transition-transform duration-500 transform-style-3d relative ${isFlipped ? 'rotate-y-180' : ''}">
+                                <div class="absolute w-full h-full backface-hidden bg-white border-8 border-purple-200 rounded-3xl shadow-xl flex flex-col items-center justify-center p-6">
+                                    <div class="text-9xl mb-6">${currentWord.emoji}</div>
+                                    <button id="fc-speak" class="bg-purple-100 p-4 rounded-full hover:bg-purple-200 transition-colors">
+                                        ${ICONS.Volume2.replace('class="', 'class="w-8 h-8 text-purple-600 ')}
+                                    </button>
+                                    <p class="mt-4 text-purple-400 font-bold uppercase tracking-wider text-sm">Click to flip</p>
+                                </div>
+                                <div class="absolute w-full h-full backface-hidden rotate-y-180 bg-purple-500 border-8 border-purple-600 rounded-3xl shadow-xl flex flex-col items-center justify-center p-8 text-white text-center">
+                                    <h1 class="text-6xl font-black mb-6 tracking-widest">${currentWord.word}</h1>
+                                    <p class="text-xl font-medium text-purple-100 bg-purple-600/50 p-4 rounded-xl">"${currentWord.hint}"</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex gap-4 w-full max-w-sm justify-between">
+                             <button id="fc-prev" class="bg-slate-200 text-slate-700 font-bold py-3 px-6 rounded-full hover:bg-slate-300 touch-manipulation">Previous</button>
+                             <span class="text-slate-400 font-bold py-3">${currentIndex + 1} / ${words.length}</span>
+                             <button id="fc-next" class="bg-purple-500 text-white font-bold py-3 px-6 rounded-full hover:bg-purple-600 shadow-md touch-manipulation">Next Card</button>
+                        </div>
+                    </div>
+                `;
+
+                document.getElementById('fc-card').onclick = (e) => {
+                    if (e.target.closest('#fc-speak')) return;
+                    playSound.pop();
+                    isFlipped = !isFlipped;
+                    document.getElementById('fc-inner').classList.toggle('rotate-y-180');
+                };
+
+                document.getElementById('fc-speak').onclick = (e) => { e.stopPropagation(); speakWord(currentWord.word); };
+
+                document.getElementById('fc-prev').onclick = () => {
+                    playSound.pop();
+                    isFlipped = false;
+                    setTimeout(() => { currentIndex = (currentIndex === 0 ? words.length - 1 : currentIndex - 1); render(); }, 200);
+                };
+                document.getElementById('fc-next').onclick = () => {
+                    playSound.pop();
+                    isFlipped = false;
+                    setTimeout(() => { currentIndex = (currentIndex + 1) % words.length; render(); }, 200);
+                };
+            };
+            render();
+        };
+
+        const initRightWrong = (container) => {
+            const words = shuffleArray(getActiveWords());
+            let currentIndex = 0;
+            let displayWord = '';
+            let isCorrectSpelling = true;
+            let status = 'idle';
+            let stats = { correct: 0, total: 0 };
+
+            const setupRound = () => {
+                const wObj = words[currentIndex];
+                isCorrectSpelling = Math.random() > 0.5;
+                if (isCorrectSpelling) {
+                    displayWord = wObj.word;
+                } else {
+                    const chars = wObj.word.split('');
+                    if (chars.length > 2) {
+                        const idx = Math.floor(Math.random() * (chars.length - 2)) + 1;
+                        [chars[idx], chars[idx + 1]] = [chars[idx + 1], chars[idx]];
+                    } else {
+                        chars[0] = chars[0] === 'a' ? 'e' : 'a';
+                    }
+                    displayWord = chars.join('');
+                }
+                status = 'idle';
+                render();
+            };
+
+            const render = () => {
+                const currentWord = words[currentIndex];
+                container.innerHTML = `
+                    <div class="flex flex-col items-center justify-center flex-1 py-2 sm:py-0 w-full">
+                        ${generateScoreBoardHTML(stats.correct, stats.total)}
+                        <h2 class="text-2xl sm:text-3xl font-black text-slate-700 mb-6 sm:mb-10 flex items-center gap-2 sm:gap-3">
+                            <span class="text-3xl sm:text-4xl">⚖️</span> Right or Wrong?
+                        </h2>
+                        <div class="flex items-center gap-4 sm:gap-6 mb-4">
+                            <div class="text-5xl sm:text-6xl">${currentWord.emoji}</div>
+                            <button id="rw-speak" class="p-3 bg-blue-500 text-white rounded-full shadow-lg hover:bg-blue-600 active:scale-95 transition-all touch-manipulation border-b-4 border-blue-700">
+                                ${ICONS.Volume2}
+                            </button>
+                        </div>
+                        <div class="bg-white border-4 sm:border-8 ${status === 'wrong' ? 'border-red-500' : status === 'correct' ? 'border-green-500' : 'border-slate-200'} rounded-2xl sm:rounded-3xl py-8 sm:py-12 px-4 sm:px-20 mb-8 sm:mb-12 shadow-inner w-full flex justify-center overflow-hidden">
+                             <h1 class="text-4xl sm:text-8xl font-black tracking-wider break-all text-center ${status === 'wrong' ? 'text-red-500 line-through' : status === 'correct' ? 'text-green-500' : 'text-slate-800'}">${displayWord}</h1>
+                        </div>
+                        <div class="flex gap-3 sm:gap-6 w-full max-w-md">
+                            <button id="rw-wrong" class="flex-1 bg-red-500 text-white font-bold text-lg sm:text-2xl py-4 sm:py-6 rounded-xl sm:rounded-2xl shadow-lg border-b-4 sm:border-b-8 border-red-700 hover:-translate-y-1 active:translate-y-1 active:border-b-0 transition-all flex justify-center items-center gap-2 touch-manipulation">
+                                ${ICONS.XCircle} Wrong
+                            </button>
+                            <button id="rw-right" class="flex-1 bg-green-500 text-white font-bold text-lg sm:text-2xl py-4 sm:py-6 rounded-xl sm:rounded-2xl shadow-lg border-b-4 sm:border-b-8 border-green-700 hover:-translate-y-1 active:translate-y-1 active:border-b-0 transition-all flex justify-center items-center gap-2 touch-manipulation">
+                                ${ICONS.CheckCircle} Right
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+                document.getElementById('rw-speak').onclick = () => { playSound.pop(); speakWord(currentWord.word); };
+
+                const handleAnswer = (guessedCorrect) => {
+                    if (status !== 'idle') return;
+                    const isWin = guessedCorrect === isCorrectSpelling;
+                    stats.correct += isWin ? 1 : 0;
+                    stats.total += 1;
+
+                    status = isWin ? 'correct' : 'wrong';
+                    if (isWin) {
+                        playSound.win();
+                        addStars(2);
+                    } else {
+                        playSound.lose();
+                    }
+                    render(); // Re-render to show colors
+
+                    setTimeout(() => {
+                        currentIndex = (currentIndex + 1) % words.length;
+                        setupRound();
+                    }, 1000);
+                };
+
+                document.getElementById('rw-wrong').onclick = () => { playSound.pop(); handleAnswer(false); };
+                document.getElementById('rw-right').onclick = () => { playSound.pop(); handleAnswer(true); };
+                if (status !== 'idle') {
+                    document.getElementById('rw-wrong').disabled = true;
+                    document.getElementById('rw-right').disabled = true;
+                }
+            };
+            setupRound();
+        };
+
+        const initSentenceFill = (container) => {
+            let currentWeekNum = state.selectedWeek === 'all' ? 1 : parseInt(state.selectedWeek);
+            let sentence = '';
+            let targetWord = '';
+            let sentenceParts = [];
+            let options = [];
+            let status = 'idle';
+            let stats = { correct: 0, total: 0 };
+
+            const setupRound = () => {
+                sentence = SPELLING_DATA[currentWeekNum]?.sentence;
+                const wordsObj = SPELLING_DATA[currentWeekNum]?.words;
+                if (!sentence) {
+                    container.innerHTML = `<div>No sentence data for this week.</div>`;
+                    return;
+                }
+                const sWords = sentence.replace(/[.,]/g, '').split(' ');
+                let foundWord = '';
+                for (let w of sWords) {
+                    if (wordsObj.some(sp => sp.word.toLowerCase() === w.toLowerCase())) {
+                        foundWord = w; break;
+                    }
+                }
+                if (!foundWord) foundWord = sWords[2];
+                targetWord = foundWord;
+                sentenceParts = sentence.split(new RegExp(`(${foundWord})`, 'gi'));
+
+                const wrongWords = shuffleArray(wordsObj.filter(w => w.word.toLowerCase() !== foundWord.toLowerCase())).slice(0, 2);
+                options = shuffleArray([foundWord.toLowerCase(), ...wrongWords.map(w => w.word)]);
+                status = 'idle';
+                render();
+            };
+
+            const render = () => {
+                container.innerHTML = `
+                    <div class="flex flex-col items-center justify-center flex-1 text-center py-2 sm:py-0 w-full">
+                        ${generateScoreBoardHTML(stats.correct, stats.total)}
+                        <h2 class="text-2xl sm:text-3xl font-black text-slate-700 mb-6 sm:mb-10 flex items-center gap-2 sm:gap-3">
+                            <span class="text-3xl sm:text-4xl">✍️</span> Fill the Blank
+                        </h2>
+                        <div class="bg-teal-50 border-4 border-teal-200 p-4 sm:p-8 rounded-2xl sm:rounded-3xl mb-8 sm:mb-12 shadow-sm w-full max-w-2xl relative mt-4 sm:mt-0">
+                            <button id="sf-speak" class="absolute -top-6 right-2 sm:-top-6 sm:-right-6 p-3 sm:p-4 bg-blue-500 text-white rounded-full shadow-lg hover:bg-blue-600 active:scale-95 transition-all touch-manipulation border-b-4 border-blue-700">
+                                ${ICONS.Volume2}
+                            </button>
+                            <p class="text-xl sm:text-5xl font-bold text-slate-700 leading-loose sm:leading-relaxed" id="sf-parts"></p>
+                        </div>
+                        <div class="flex gap-2 sm:gap-4 flex-wrap justify-center w-full" id="sf-options"></div>
+                    </div>
+                `;
+
+                document.getElementById('sf-speak').onclick = () => {
+                    playSound.pop();
+                    speakWord(sentence.replace(new RegExp(targetWord, 'gi'), 'BLANK'));
+                };
+
+                const partsEl = document.getElementById('sf-parts');
+                sentenceParts.forEach((part) => {
+                    const span = document.createElement('span');
+                    if (part.toLowerCase() === targetWord.toLowerCase()) {
+                        span.className = `inline-block border-b-4 sm:border-b-8 px-2 sm:px-4 mx-1 sm:mx-2 rounded-lg transition-all ${status === 'correct' ? 'bg-green-400 text-white border-green-600' : 'bg-white text-transparent border-slate-300 min-w-[3rem] sm:min-w-[8rem]'}`;
+                        span.textContent = status === 'correct' ? targetWord : '___';
+                    } else {
+                        span.textContent = part;
+                    }
+                    partsEl.appendChild(span);
+                });
+
+                const optsEl = document.getElementById('sf-options');
+                options.forEach(opt => {
+                    const btn = document.createElement('button');
+                    const isTarget = opt.toLowerCase() === targetWord.toLowerCase();
+                    btn.className = `text-lg sm:text-4xl font-bold px-4 sm:px-8 py-3 sm:py-4 rounded-xl sm:rounded-2xl shadow-md border-b-4 sm:border-b-8 transition-all hover:-translate-y-1 active:translate-y-1 active:border-b-0 flex-1 min-w-[40%] sm:min-w-0 touch-manipulation ${status === 'correct' && isTarget ? 'bg-green-500 border-green-700 text-white' : 'bg-teal-400 border-teal-600 text-white'}`;
+                    btn.textContent = opt;
+                    btn.disabled = status !== 'idle';
+                    btn.onclick = () => {
+                        if (status !== 'idle') return;
+                        playSound.pop();
+
+                        stats.correct += isTarget ? 1 : 0;
+                        stats.total += 1;
+
+                        if (isTarget) {
+                            playSound.win();
+                            status = 'correct';
+                            addStars(10);
+                            render(); // show success state
+                            setTimeout(() => {
+                                if (state.selectedWeek === 'all') {
+                                    const currIdx = AVAILABLE_WEEKS.indexOf(currentWeekNum);
+                                    currentWeekNum = AVAILABLE_WEEKS[(currIdx + 1) % AVAILABLE_WEEKS.length];
+                                }
+                                setupRound();
+                            }, 2000);
+                        } else {
+                            playSound.lose();
+                            status = 'wrong';
+                            btn.classList.replace('bg-teal-400', 'bg-red-500');
+                            btn.classList.replace('border-teal-600', 'border-red-700');
+                            updateScoreBoardUI(stats.correct, stats.total);
+                            setTimeout(() => {
+                                status = 'idle';
+                                btn.classList.replace('bg-red-500', 'bg-teal-400');
+                                btn.classList.replace('border-red-700', 'border-teal-600');
+                            }, 1000);
+                        }
+                    };
+                    optsEl.appendChild(btn);
+                });
+            };
+            setupRound();
+        };
+
+        const initMemoryMatch = (container) => {
+            const words = getActiveWords();
+            let cards = [];
+            let flippedIndices = [];
+            let matchedIds = [];
+            let stats = { moves: 0, matches: 0 };
+            let isProcessing = false;
+
+            const setupGame = () => {
+                const selectedWords = shuffleArray(words).slice(0, 4);
+                const genCards = [];
+                selectedWords.forEach((w, idx) => {
+                    genCards.push({ id: `word-${idx}`, pairId: idx, type: 'word', content: w.word });
+                    genCards.push({ id: `emoji-${idx}`, pairId: idx, type: 'emoji', content: w.emoji });
+                });
+                cards = shuffleArray(genCards);
+                flippedIndices = [];
+                matchedIds = [];
+                stats = { moves: 0, matches: 0 };
+                isProcessing = false;
+                render();
+            };
+
+            const render = () => {
+                const scoreBoardPercentage = 4 > 0 ? Math.round((matchedIds.length / 4) * 100) : 0;
+                container.innerHTML = `
+                    <div class="flex flex-col items-center justify-center flex-1 py-2 sm:py-0 w-full">
+                        <div class="flex items-center gap-4 bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-200 mb-4 w-full max-w-xs justify-between">
+                            <div class="flex flex-col items-center">
+                                <span class="text-xs font-bold text-slate-400 uppercase">Percent</span>
+                                <span class="text-xl font-black ${scoreBoardPercentage === 100 ? 'text-green-500' : 'text-blue-500'}">${scoreBoardPercentage}%</span>
+                            </div>
+                            <div class="h-8 w-px bg-slate-200"></div>
+                            <div class="flex flex-col items-center">
+                                <span class="text-xs font-bold text-slate-400 uppercase">Moves</span>
+                                <span class="text-lg font-bold text-slate-700">${stats.moves}</span>
+                            </div>
+                            <div id="game-stats" style="display:none" data-percentage="${scoreBoardPercentage}" data-correct="${matchedIds.length}" data-total="4"></div>
+                        </div>
+
+                        <div class="flex w-full justify-between items-center mb-6">
+                            <h2 class="text-2xl sm:text-3xl font-black text-slate-700 flex items-center gap-2 sm:gap-3">
+                                <span class="text-3xl sm:text-4xl">🧠</span> <span class="hidden sm:inline">Memory Match</span><span class="sm:hidden">Match</span>
+                            </h2>
+                            <button id="mm-restart" class="flex items-center gap-1 sm:gap-2 bg-indigo-100 text-indigo-700 px-3 sm:px-4 py-2 rounded-full font-bold hover:bg-indigo-200 text-sm sm:text-base touch-manipulation">
+                                ${ICONS.RotateCcw} <span class="hidden sm:inline">Restart</span>
+                            </button>
+                        </div>
+                        <div class="grid grid-cols-4 gap-2 sm:gap-6 w-full max-w-2xl" id="mm-grid"></div>
+                        ${matchedIds.length === 4 ? '<div class="mt-8 text-2xl font-black text-green-500 animate-bounce-custom">Great Memory! 🎉</div>' : ''}
+                    </div>
+                `;
+
+                document.getElementById('mm-restart').onclick = setupGame;
+
+                const grid = document.getElementById('mm-grid');
+                cards.forEach((card, idx) => {
+                    const isFlipped = flippedIndices.includes(idx) || matchedIds.includes(card.pairId);
+                    const div = document.createElement('div');
+                    div.className = "relative w-full aspect-square perspective-1000 cursor-pointer";
+                    div.innerHTML = `
+                        <div class="w-full h-full transition-transform duration-500 transform-style-3d relative ${isFlipped ? 'rotate-y-180' : ''}">
+                            <div class="absolute w-full h-full backface-hidden bg-indigo-500 border-4 border-indigo-700 rounded-2xl flex items-center justify-center shadow-md">
+                               <div class="text-4xl opacity-50">❓</div>
+                            </div>
+                            <div class="absolute w-full h-full backface-hidden rotate-y-180 bg-white border-4 border-indigo-200 rounded-2xl flex items-center justify-center shadow-md ${matchedIds.includes(card.pairId) ? 'bg-green-100 border-green-400' : ''}">
+                                ${card.type === 'emoji' ? `<span class="text-5xl sm:text-7xl">${card.content}</span>` : `<span class="text-xl sm:text-2xl font-black text-slate-700 tracking-tight">${card.content}</span>`}
+                            </div>
+                        </div>
+                    `;
+                    div.onclick = () => {
+                        if (isProcessing || flippedIndices.length === 2 || flippedIndices.includes(idx) || matchedIds.includes(card.pairId)) return;
+                        playSound.pop();
+                        if (card.type === 'word') speakWord(card.content);
+
+                        flippedIndices.push(idx);
+                        render(); // Show flip immediately
+
+                        if (flippedIndices.length === 2) {
+                            isProcessing = true;
+                            stats.moves++;
+                            const c1 = cards[flippedIndices[0]];
+                            const c2 = cards[flippedIndices[1]];
+
+                            if (c1.pairId === c2.pairId) {
+                                setTimeout(() => {
+                                    playSound.win();
+                                    matchedIds.push(c1.pairId);
+                                    stats.matches++;
+                                    flippedIndices = [];
+                                    if (matchedIds.length === 4) addStars(15);
+                                    isProcessing = false;
+                                    render();
+                                }, 500);
+                            } else {
+                                setTimeout(() => {
+                                    playSound.lose();
+                                    flippedIndices = [];
+                                    isProcessing = false;
+                                    render();
+                                }, 1000);
+                            }
+                        }
+                    };
+                    grid.appendChild(div);
+                });
+            };
+            setupGame();
+        };
+
+        const initSpeedBee = (container) => {
+            const words = shuffleArray(getActiveWords());
+            let currentIndex = 0;
+            let timeLeft = 10;
+            let score = 0;
+            let totalWords = 0;
+            let gameState = 'start'; // start, playing, over
+            let timerInterval = null;
+
+            const startGame = () => {
+                gameState = 'playing';
+                score = 0;
+                totalWords = 0;
+                timeLeft = 10;
+                currentIndex = 0;
+
+                if (timerInterval) clearInterval(timerInterval);
+                timerInterval = setInterval(() => {
+                    timeLeft--;
+                    updateProgress();
+                    if (timeLeft <= 0) {
+                        clearInterval(timerInterval);
+                        playSound.lose();
+                        totalWords++;
+                        gameState = 'over';
+                        render();
+                    }
+                }, 1000);
+
+                render();
+                speakWord(words[currentIndex].word);
+            };
+
+            const updateProgress = () => {
+                const bar = document.getElementById('sb-progress');
+                if (bar) {
+                    bar.style.width = `${(timeLeft / 10) * 100}%`;
+                    bar.className = `h-full transition-all duration-1000 linear ${timeLeft > 5 ? 'bg-green-500' : timeLeft > 2 ? 'bg-yellow-500' : 'bg-red-500'}`;
+                }
+            };
+
+            const render = () => {
+                const currentWord = words[currentIndex];
+                container.innerHTML = `
+                    <div class="flex flex-col items-center justify-center flex-1 w-full">
+                        ${gameState !== 'start' ? generateScoreBoardHTML(score, totalWords) : ''}
+                        
+                        <div class="flex w-full justify-between items-center mb-10">
+                            <h2 class="text-3xl font-black text-slate-700 flex items-center gap-3">
+                                <span class="text-4xl text-rose-500">${ICONS.Zap}</span> Speed Bee
+                            </h2>
+                        </div>
+
+                        ${gameState === 'start' ? `
+                            <div class="text-center">
+                                <div class="text-8xl mb-6">⏱️</div>
+                                <p class="text-2xl font-bold text-slate-600 mb-8">You have 10 seconds per word. Type fast!</p>
+                                <button id="sb-start-btn" class="bg-rose-500 text-white font-black text-3xl px-12 py-6 rounded-full shadow-lg border-b-8 border-rose-700 hover:bg-rose-400 active:translate-y-2 active:border-b-0 transition-all touch-manipulation">
+                                    START
+                                </button>
+                            </div>
+                        ` : ''}
+
+                        ${gameState === 'playing' ? `
+                            <div class="w-full flex flex-col items-center">
+                                <div class="w-full max-w-md bg-slate-200 h-6 rounded-full mb-8 overflow-hidden border-2 border-slate-300">
+                                    <div id="sb-progress" class="h-full transition-all duration-1000 linear bg-green-500" style="width: 100%"></div>
+                                </div>
+                                <div class="text-6xl mb-6 drop-shadow-md">${currentWord.emoji}</div>
+                                <div class="flex gap-4 mb-8">
+                                     <button id="sb-speak" class="p-4 bg-blue-500 text-white rounded-full shadow-md hover:bg-blue-600 active:scale-95 transition-all touch-manipulation">
+                                        ${ICONS.Volume2}
+                                     </button>
+                                </div>
+                                <input type="text" id="sb-input" class="w-full max-w-md text-center text-5xl font-black p-6 border-4 border-rose-300 rounded-3xl outline-none focus:border-rose-500 focus:ring-4 focus:ring-rose-200 text-slate-700 tracking-widest shadow-inner" placeholder="Type..." autocomplete="off">
+                            </div>
+                        ` : ''}
+
+                        ${gameState === 'over' ? `
+                            <div class="text-center">
+                                <h1 class="text-6xl font-black text-red-500 mb-4">Time's Up!</h1>
+                                <p class="text-2xl font-bold text-slate-600 mb-8">You spelled <span class="text-rose-500 text-4xl">${score}</span> words correctly!</p>
+                                <button id="sb-restart-btn" class="bg-rose-500 text-white font-black text-2xl px-10 py-5 rounded-full shadow-lg border-b-8 border-rose-700 hover:bg-rose-400 active:translate-y-2 active:border-b-0 transition-all flex items-center gap-3 mx-auto touch-manipulation">
+                                    ${ICONS.RotateCcw} Play Again
+                                </button>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+
+                if (gameState === 'start') {
+                    document.getElementById('sb-start-btn').onclick = startGame;
+                }
+
+                if (gameState === 'over') {
+                    document.getElementById('sb-restart-btn').onclick = startGame;
+                }
+
+                if (gameState === 'playing') {
+                    const inputEl = document.getElementById('sb-input');
+                    inputEl.focus();
+                    document.getElementById('sb-speak').onclick = () => { playSound.pop(); speakWord(currentWord.word); };
+
+                    inputEl.oninput = (e) => {
+                        if (gameState !== 'playing') return;
+                        if (e.target.value.toLowerCase().trim() === currentWord.word.toLowerCase()) {
+                            playSound.win();
+                            score++;
+                            totalWords++;
+                            if (score > 0 && score % 3 === 0) addStars(20);
+
+                            currentIndex = (currentIndex + 1) % words.length;
+                            timeLeft = 10;
+                            render();
+                            speakWord(words[currentIndex].word);
+                        }
+                    };
+                }
+
+                // Keep reference to clear on unmount
+                state.activeGameInterval = timerInterval;
+            };
+            render();
+        };
+
+        const renderApp = () => {
+            renderHeader();
+            if (state.currentView === 'home') {
+                renderHome();
+            } else {
+                const container = renderGameContainer();
+                if (state.currentView === 'listen') initListenSpell(container);
+                if (state.currentView === 'picture') initPicturePuzzle(container);
+                if (state.currentView === 'hint') initHintMaster(container);
+                if (state.currentView === 'scramble') initWordScramble(container);
+                if (state.currentView === 'missing') initMissingLetters(container);
+                if (state.currentView === 'flashcards') initFlashcards(container);
+                if (state.currentView === 'rightwrong') initRightWrong(container);
+                if (state.currentView === 'sentence') initSentenceFill(container);
+                if (state.currentView === 'memory') initMemoryMatch(container);
+                if (state.currentView === 'speed') initSpeedBee(container);
+            }
+        };
+
+        // Kickoff
+        renderApp();
+    </script>
+</body>
+
+</html>
